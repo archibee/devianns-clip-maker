@@ -13,6 +13,7 @@ import { timelineAudio } from '../audio/timeline-audio';
 import { openMedia, type OpenMedia } from '../media/input';
 import { VideoReader } from '../media/video-reader';
 import {
+  defaultTransform,
   cueErrors,
   dimensions,
   duration,
@@ -24,7 +25,7 @@ import {
 } from '../project/model';
 import { parseProject } from '../project/validation';
 import { renderFrame } from '../render/compositor';
-import { loadFont } from '../render/font';
+import { loadFont, loadProvidedFonts } from '../render/font';
 import {
   checkSupport,
   estimateBytes,
@@ -38,6 +39,7 @@ type Start = {
   requestId: number;
   project: Project;
   settings: ExportSettings;
+  fonts?: import('../render/local-fonts').LocalFontPayload[];
   files: { id: string; file: File }[];
   handle?: FileSystemFileHandle;
 };
@@ -81,6 +83,7 @@ async function run(job: Start) {
         '메모리 출력 한도(256MiB)를 초과합니다. 파일에 직접 저장하거나 길이/해상도를 낮추세요.',
       );
     await loadFont();
+    await loadProvidedFonts(job.project, job.fonts ?? []);
     check();
     let target: Target;
     let memory: BufferTarget | undefined;
@@ -148,24 +151,25 @@ async function run(job: Start) {
       const timeUs = frameTime(n, job.settings.fps);
       const nextUs = Math.min(endUs, frameTime(n + 1, job.settings.fps));
       const item = resolve(project, timeUs);
-      if (!item) throw new Error('출력 시간에 대응하는 클립이 없습니다.');
-      const media = await getMedia(item.clip.assetId);
-      // 컷 또는 클립 변경 시 동일 원본이라도 읽기 구간을 갱신한다.
-      if (readerId !== item.clip.id) {
-        await reader?.close();
-        reader = new VideoReader(media);
-        readerId = item.clip.id;
-      }
-      const image = await reader!.at(seconds(item.sourceUs));
-      renderFrame(
-        context,
-        image,
-        image.width,
-        image.height,
-        item.clip.transform,
-        project.subtitles,
-        timeUs,
-      );
+      if (item) {
+        const media = await getMedia(item.clip.assetId);
+        // 컷 또는 클립 변경 시 동일 원본이라도 읽기 구간을 갱신한다.
+        if (readerId !== item.sourceKey) {
+          await reader?.close();
+          reader = new VideoReader(media);
+          readerId = item.sourceKey;
+        }
+        const image = await reader!.at(seconds(item.sourceUs));
+        renderFrame(
+          context,
+          image,
+          image.width,
+          image.height,
+          item.clip.transform,
+          project.subtitles,
+          timeUs,
+        );
+      } else renderFrame(context, null, 0, 0, defaultTransform(), project.subtitles, timeUs);
       await videoSource.add(seconds(timeUs), seconds(nextUs - timeUs));
       while (
         audioSource &&

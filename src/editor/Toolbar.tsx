@@ -1,4 +1,4 @@
-import type { Project } from '../project/model';
+import { duration, type Project } from '../project/model';
 
 type Props = {
   project: Project;
@@ -64,7 +64,7 @@ export function Toolbar(p: Props) {
         </button>
         <button
           className="primary"
-          disabled={p.locked || !p.project.clips.length}
+          disabled={p.locked || !duration(p.project)}
           onClick={p.onExport}
         >
           내보내기 ↗

@@ -136,10 +136,6 @@ export function AssetPanel(p: Props) {
           </button>
         )}
       </div>
-      <footer className="panel-footer">
-        {p.importing ? '파일을 분석하고 있습니다…' : '에셋을 아래 타임라인으로 드래그하세요'}
-        <small>원본 파일은 이 브라우저에서만 처리됩니다.</small>
-      </footer>
     </section>
   );
 }

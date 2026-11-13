@@ -1,3 +1,4 @@
+import { localFontPayload, prepareLocalFonts } from '../render/local-fonts';
 import { cueErrors, duration, type ExportSettings, type Project } from '../project/model';
 import { estimateBytes, MEMORY_LIMIT } from './settings';
 import type { MediaRegistry } from '../media/registry';
@@ -27,7 +28,7 @@ export class ExportService {
     try {
       if (!duration(project)) throw new Error('타임라인에 영상을 추가하세요.');
       if (cueErrors(project).length) throw new Error(cueErrors(project)[0]);
-      if (project.clips.some((c) => !registry.has(c.assetId)))
+      if (project.clips.some((c) => (c.parts ?? [c]).some((part) => !registry.has(part.assetId))))
         throw new Error('누락된 원본을 먼저 다시 연결하세요.');
       const picker = (
         window as unknown as {
@@ -52,6 +53,7 @@ export class ExportService {
         throw new Error(
           '예상 크기가 256MiB를 초과합니다. 파일 직접 저장 또는 낮은 출력 설정을 선택하세요.',
         );
+      await prepareLocalFonts(project);
       this.dispose();
       const requestId = ++this.requestId;
       this.onState({ status: 'running', progress: 0, stage: '원본·인코더 준비' });
@@ -109,6 +111,7 @@ export class ExportService {
         project: structuredClone(project),
         settings,
         files: registry.files(),
+        fonts: localFontPayload(project),
         handle,
       });
     } catch (error) {

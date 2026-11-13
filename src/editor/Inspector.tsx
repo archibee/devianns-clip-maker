@@ -1,13 +1,6 @@
+import { fontAccess, registerLocalFont, type LocalFontData } from '../render/local-fonts';
 import { useEffect, useState } from 'react';
-import {
-  cueErrors,
-  duration,
-  newId,
-  seconds,
-  toUs,
-  type Cue,
-  type Project,
-} from '../project/model';
+import { cueErrors, newId, seconds, toUs, type Cue, type Project } from '../project/model';
 import type { Command } from '../project/commands';
 import { PanelTitle } from './Panel';
 
@@ -69,6 +62,8 @@ type Props = {
   onSeek: (us: number) => void;
 };
 export function Inspector(p: Props) {
+  const [fonts, setFonts] = useState<LocalFontData[]>([]);
+  const [fontError, setFontError] = useState('');
   const tab = p.tab;
   const clip = p.project.clips.find((c) => c.id === p.selected);
   const asset = p.project.assets.find((a) => a.id === clip?.assetId);
@@ -76,14 +71,11 @@ export function Inspector(p: Props) {
   const updateCue = (patch: Partial<Cue>) =>
     cue && p.onCommand({ type: 'cue', cue: { ...cue, ...patch } });
   const addCue = () => {
-    const startUs = Math.max(
-      0,
-      Math.min(p.timeUs, duration(p.project) - Math.round(1_000_000 / p.project.fps)),
-    );
+    const startUs = Math.max(0, p.timeUs);
     const cue: Cue = {
       id: newId(),
       startUs,
-      endUs: Math.min(duration(p.project), startUs + 2_000_000),
+      endUs: startUs + 2_000_000,
       text: '새 자막',
       size: 0.05,
       color: '#ffffff',
@@ -174,7 +166,11 @@ export function Inspector(p: Props) {
                     label="원본 끝 (초)"
                     value={seconds(clip.outUs)}
                     min={seconds(clip.inUs) + 0.000001}
-                    max={seconds(asset.durationUs)}
+                    max={seconds(
+                      clip.parts
+                        ? clip.parts.reduce((n, c) => n + c.outUs - c.inUs, 0)
+                        : asset.durationUs,
+                    )}
                     disabled={p.locked}
                     onCommit={(n) =>
                       p.onCommand({ type: 'trim', id: clip.id, inUs: clip.inUs, outUs: toUs(n) })
@@ -279,11 +275,7 @@ export function Inspector(p: Props) {
           <>
             <div className="section-heading">
               <h3>수동 자막</h3>
-              <button
-                className="subtle"
-                disabled={p.locked || !p.project.clips.length}
-                onClick={addCue}
-              >
+              <button className="subtle" disabled={p.locked} onClick={addCue}>
                 ＋ 추가
               </button>
             </div>
@@ -309,6 +301,59 @@ export function Inspector(p: Props) {
             </div>
             {cue && (
               <div className="cue-editor">
+                {fontAccess() && (
+                  <button
+                    disabled={p.locked}
+                    onClick={() => {
+                      void fontAccess()!()
+                        .then((list) => {
+                          setFonts(list.sort((a, b) => a.fullName.localeCompare(b.fullName)));
+                          setFontError('');
+                        })
+                        .catch((error) => setFontError(String(error)));
+                    }}
+                  >
+                    로컬 폰트 불러오기
+                  </button>
+                )}
+                <label className="field">
+                  자막 폰트
+                  <select
+                    disabled={p.locked}
+                    value={cue.font?.postscriptName ?? ''}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      if (!id) {
+                        updateCue({ font: undefined });
+                        return;
+                      }
+                      const font = fonts.find((f) => f.postscriptName === id);
+                      if (font)
+                        void registerLocalFont(font)
+                          .then(() => {
+                            updateCue({ font: { postscriptName: id, label: font.fullName } });
+                            setFontError('');
+                          })
+                          .catch((error) => setFontError(String(error)));
+                    }}
+                  >
+                    <option value="">기본 폰트</option>
+                    {cue.font &&
+                      !fonts.some((f) => f.postscriptName === cue.font!.postscriptName) && (
+                        <option value={cue.font.postscriptName}>{cue.font.label}</option>
+                      )}
+                    {fonts.map((f) => (
+                      <option key={f.postscriptName} value={f.postscriptName}>
+                        {f.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {fontError && (
+                  <p role="alert" className="inline-error">
+                    {fontError}
+                  </p>
+                )}
                 <label className="field">
                   내용
                   <textarea
@@ -332,7 +377,7 @@ export function Inspector(p: Props) {
                     label="자막 끝 (초)"
                     value={seconds(cue.endUs)}
                     min={seconds(cue.startUs) + 0.000001}
-                    max={Math.max(seconds(duration(p.project)), seconds(cue.endUs))}
+                    max={seconds(Number.MAX_SAFE_INTEGER)}
                     disabled={p.locked}
                     onCommit={(n) => updateCue({ endUs: toUs(n) })}
                   />
@@ -408,9 +453,6 @@ export function Inspector(p: Props) {
           </>
         )}
       </div>
-      <footer className="panel-footer">
-        비파괴 편집<small>원본 파일은 수정되지 않습니다.</small>
-      </footer>
     </section>
   );
 }

@@ -11,7 +11,9 @@ export const videoBitrate = (settings: ExportSettings) =>
     settings.fps) /
   30;
 export const hasAudio = (p: Project) =>
-  p.clips.some((c) => p.assets.find((a) => a.id === c.assetId)?.hasAudio);
+  p.clips.some((c) =>
+    (c.parts ?? [c]).some((part) => p.assets.find((a) => a.id === part.assetId)?.hasAudio),
+  );
 export function estimateBytes(p: Project, settings: ExportSettings) {
   return Math.ceil(
     (((videoBitrate(settings) + (hasAudio(p) ? 128_000 : 0)) * duration(p)) / 1_000_000 / 8) * 1.2,

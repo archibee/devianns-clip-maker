@@ -1,3 +1,4 @@
+import { prepareLocalFonts } from '../render/local-fonts';
 import { useEffect, useRef, useState } from 'react';
 import { AssetPanel } from '../editor/AssetPanel';
 import { ExportDialog } from '../editor/ExportDialog';
@@ -17,7 +18,6 @@ import {
   type HistoryAction,
 } from '../project/commands';
 import {
-  duration,
   emptyProject,
   layout,
   seconds,
@@ -25,6 +25,7 @@ import {
   newId,
   type Asset,
   type Cue,
+  type Clip,
   type Project,
 } from '../project/model';
 import { parseProject } from '../project/validation';
@@ -51,7 +52,11 @@ export function App() {
   const [selected, setSelected] = useState<string>();
   const [selectedCue, setSelectedCue] = useState<string>();
   const [inspectorTab, setInspectorTab] = useState<'clip' | 'subtitle'>('clip');
-  const cueClipboard = useRef<Cue | undefined>(undefined);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const cueClipboard = useRef<
+    { kind: 'cue'; cue: Cue } | { kind: 'clips'; clips: Clip[] } | undefined
+  >(undefined);
+  const pendingSeek = useRef<number | undefined>(undefined);
   const [importing, setImporting] = useState(false);
   const importRef = useRef(false);
   const [message, setMessage] = useState<string>();
@@ -96,38 +101,72 @@ export function App() {
       command({ type: 'deleteCue', id: selectedCue });
       setSelectedCue(undefined);
     } else if (selected) {
-      command({ type: 'delete', id: selected });
+      command({ type: 'deleteClips', ids: selectedIds.length ? selectedIds : [selected] });
+      setSelectedIds([]);
       setSelected(undefined);
     }
   }
-  function selectClip(id: string) {
+  function selectClip(id: string, additive = false) {
     playback.pause();
-    setSelected(id);
+    const ids = additive
+      ? selectedIds.includes(id)
+        ? selectedIds.filter((x) => x !== id)
+        : [...selectedIds, id]
+      : [id];
+    setSelectedIds(ids);
+    setSelected(ids.at(-1));
+    const row = layout(project).find((c) => c.clip.id === id);
+    if (row) playback.seek(row.startUs);
     setSelectedCue(undefined);
     setInspectorTab('clip');
   }
   function selectCue(id?: string) {
     playback.pause();
     setSelectedCue(id);
+    setSelectedIds([]);
     setSelected(undefined);
     setInspectorTab('subtitle');
   }
   function copyCue() {
     const cue = project.subtitles.find((c) => c.id === selectedCue);
-    if (!cue) return false;
-    cueClipboard.current = { ...cue };
+    if (!cue) {
+      const clips = project.clips.filter((c) => selectedIds.includes(c.id) || c.id === selected);
+      if (!clips.length) return false;
+      cueClipboard.current = { kind: 'clips', clips: structuredClone(clips) };
+      return true;
+    }
+    cueClipboard.current = { kind: 'cue', cue: structuredClone(cue) };
     return true;
   }
   function pasteCue() {
-    const source = cueClipboard.current;
-    if (!source) return false;
+    const copied = cueClipboard.current;
+    if (!copied) return false;
+    if (copied.kind === 'clips') {
+      const before = new Set(project.clips.map((c) => c.id));
+      if (command({ type: 'pasteClips', clips: copied.clips, timeUs: playState.timeUs })) {
+        const ids = historyRef.current.present.clips
+          .filter((c) => !before.has(c.id))
+          .map((c) => c.id);
+        setSelectedIds(ids);
+        setSelected(ids.at(-1));
+        setSelectedCue(undefined);
+        setInspectorTab('clip');
+        pendingSeek.current =
+          playState.timeUs + copied.clips.reduce((n, c) => n + c.outUs - c.inUs, 0);
+      }
+      return true;
+    }
+    const source = copied.cue;
     const cue = {
       ...source,
       id: newId(),
       startUs: playState.timeUs,
       endUs: playState.timeUs + source.endUs - source.startUs,
     };
-    if (command({ type: 'cue', cue })) selectCue(cue.id);
+    if (command({ type: 'cue', cue })) {
+      selectCue(cue.id);
+      pendingSeek.current = cue.endUs;
+    }
     return true;
   }
   function toggle() {
@@ -162,11 +201,31 @@ export function App() {
   });
   useEffect(() => {
     if (selected && !project.clips.some((c) => c.id === selected)) setSelected(undefined);
+    setSelectedIds((ids) =>
+      ids.every((id) => project.clips.some((c) => c.id === id))
+        ? ids
+        : ids.filter((id) => project.clips.some((c) => c.id === id)),
+    );
     if (selectedCue && !project.subtitles.some((c) => c.id === selectedCue))
       setSelectedCue(undefined);
   }, [project, selected, selectedCue]);
   useEffect(() => {
-    playback.bind(project);
+    let active = true;
+    void prepareLocalFonts(project)
+      .catch((error) => {
+        if (active) setMessage(String(error));
+      })
+      .then(() => {
+        if (!active) return;
+        playback.bind(project);
+        if (pendingSeek.current !== undefined) {
+          playback.seek(pendingSeek.current);
+          pendingSeek.current = undefined;
+        }
+      });
+    return () => {
+      active = false;
+    };
   }, [playback, project, registryVersion]);
   useEffect(() => {
     const ids = new Set(
@@ -356,6 +415,8 @@ export function App() {
         />
         <PreviewPanel
           project={project}
+          selected={selected}
+          onTransform={(id, transform) => command({ type: 'transform', id, transform })}
           state={playState}
           playback={playback}
           locked={locked}
@@ -375,6 +436,8 @@ export function App() {
           onSeek={(us) => playback.seek(us)}
         />
         <Timeline
+          selectedIds={selectedIds}
+          onMerge={() => command({ type: 'merge', ids: selectedIds })}
           project={project}
           selected={selected}
           selectedCue={selectedCue}
@@ -398,7 +461,7 @@ export function App() {
             label="이동 (초)"
             value={seconds(playState.timeUs)}
             min={0}
-            max={seconds(duration(project))}
+            max={seconds(Number.MAX_SAFE_INTEGER)}
             disabled={locked}
             onCommit={(n) => playback.seek(toUs(n))}
           />

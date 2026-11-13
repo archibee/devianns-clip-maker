@@ -1,5 +1,5 @@
 import { AudioSampleSink, type AudioSample } from 'mediabunny';
-import { layout, seconds, type Project } from '../project/model';
+import { mediaLayout, duration, seconds, type Project } from '../project/model';
 import type { OpenMedia } from '../media/input';
 
 export const AUDIO_RATE = 48_000;
@@ -80,8 +80,18 @@ export async function* timelineAudio(
   getMedia: (id: string) => Promise<OpenMedia>,
   fromUs = 0,
 ): AsyncGenerator<AudioBlock> {
-  for (const item of layout(project)) {
+  let cursor = Math.ceil(seconds(fromUs) * AUDIO_RATE);
+  const silence = function* (until: number) {
+    while (cursor < until) {
+      const frames = Math.min(AUDIO_BLOCK, until - cursor);
+      const block = { timestamp: cursor / AUDIO_RATE, frames, data: new Float32Array(frames * 2) };
+      cursor += frames;
+      yield block;
+    }
+  };
+  for (const item of mediaLayout(project).sort((a, b) => a.startUs - b.startUs)) {
     if (item.endUs <= fromUs) continue;
+    yield* silence(Math.max(cursor, Math.round(seconds(item.startUs) * AUDIO_RATE)));
     const media = await getMedia(item.clip.assetId);
     const first = Math.max(
       Math.round(seconds(item.startUs) * AUDIO_RATE),
@@ -101,9 +111,11 @@ export async function* timelineAudio(
           frames,
           data: reader ? await reader.read(sourceAt(offset), frames) : new Float32Array(frames * 2),
         };
+        cursor = offset + frames;
       }
     } finally {
       await reader?.close();
     }
   }
+  yield* silence(Math.round(seconds(duration(project)) * AUDIO_RATE));
 }

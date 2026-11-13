@@ -1516,3 +1516,165 @@ small {
     min-height: 40px;
   }
 }
+/* Compact vertical workspace */
+.toolbar {
+  min-height: 50px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+.app-shell {
+  min-height: 590px;
+}
+.workspace {
+  grid-template-rows: minmax(280px, 1fr) 215px;
+}
+.panel-title,
+.timeline-panel .panel-title {
+  height: 34px;
+  min-height: 34px;
+}
+.preview-stage {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.transport {
+  height: 46px;
+  min-height: 46px;
+}
+.timeline-content {
+  min-height: 140px;
+  padding-top: 26px;
+}
+.ruler {
+  height: 26px;
+}
+.ruler > span {
+  top: 3px;
+  height: 22px;
+}
+.ruler:before {
+  top: 18px;
+}
+.video-label {
+  top: 26px;
+  height: 48px;
+}
+.audio-label {
+  top: 74px;
+  height: 28px;
+}
+.track-label small {
+  margin-top: 2px;
+}
+.track-bed {
+  height: 76px;
+  background: linear-gradient(
+    to bottom,
+    #191f29 0,
+    #191f29 47px,
+    #2d3642 47px,
+    #2d3642 48px,
+    #172620 48px,
+    #172620 75px,
+    #2d3642 75px
+  );
+}
+.timeline-clip {
+  top: 4px;
+  height: 67px;
+}
+.clip-video {
+  height: 42px;
+  padding-top: 5px;
+  padding-bottom: 4px;
+}
+.clip-audio {
+  height: 23px;
+}
+.subtitle-lane {
+  height: 30px;
+}
+.timeline-footer {
+  height: 28px;
+  min-height: 28px;
+}
+.preview-tools {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.preview-tools button {
+  min-height: 23px;
+  padding: 2px 7px;
+  font-size: 10px;
+}
+.preview-tools .active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.transform-overlay {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  overflow: hidden;
+  z-index: 4;
+}
+.tool-move {
+  cursor: move;
+}
+.tool-crop {
+  cursor: crosshair;
+}
+.tool-resize {
+  cursor: nwse-resize;
+}
+.transform-outline {
+  position: absolute;
+  border: 1px dashed #7cc9ff;
+  pointer-events: none;
+}
+.resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border: 1px solid #248bd3;
+  pointer-events: auto;
+}
+.resize-handle.nw {
+  left: -5px;
+  top: -5px;
+}
+.resize-handle.ne {
+  right: -5px;
+  top: -5px;
+}
+.resize-handle.sw {
+  left: -5px;
+  bottom: -5px;
+}
+.resize-handle.se {
+  right: -5px;
+  bottom: -5px;
+}
+.crop-selection {
+  position: absolute;
+  border: 2px solid #fff;
+  background: #ffffff22;
+  pointer-events: none;
+}
+@media (min-width: 1600px) {
+  .workspace {
+    grid-template-rows: minmax(320px, 1fr) 225px;
+  }
+}
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-rows: 400px 215px auto;
+  }
+}
+@media (max-width: 560px) {
+  .workspace {
+    grid-template-rows: 260px 350px 215px auto;
+  }
+}

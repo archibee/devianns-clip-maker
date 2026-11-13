@@ -9,9 +9,11 @@ type Props = {
   project: Project;
   timeUs: number;
   selected?: string;
+  selectedIds: string[];
+  onMerge: () => void;
   selectedCue?: string;
   locked: boolean;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, additive?: boolean) => void;
   onSelectCue: (id: string) => void;
   onSeek: (us: number) => void;
   onCommand: (command: Command) => void;
@@ -30,7 +32,7 @@ export function Timeline(p: Props) {
   }>();
   const rows = layout(p.project);
   const total = duration(p.project);
-  const visibleSeconds = Math.max(16, seconds(total) + 4);
+  const visibleSeconds = Math.max(16, seconds(Math.max(total, p.timeUs)) + 4);
   const width = Math.max(700, visibleSeconds * zoom);
   const currentIndex = p.project.clips.findIndex((c) => c.id === p.selected);
   const position = (e: { clientX: number }) => {
@@ -62,7 +64,7 @@ export function Timeline(p: Props) {
   const seekPointer = (e: PointerEvent<HTMLDivElement>) => {
     if (p.locked || e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    p.onSeek(Math.min(total, toUs(position(e) / zoom)));
+    p.onSeek(toUs(position(e) / zoom));
   };
   const trimHandle = (id: string, side: 'in' | 'out') => (
     <button
@@ -111,7 +113,7 @@ export function Timeline(p: Props) {
         <span className="quality-badge">영상 + 원본 오디오 연결</span>
         <div className="timeline-tools">
           <button
-            disabled={p.locked || !rows.length}
+            disabled={p.locked || !duration(p.project)}
             onClick={p.onSplit}
             title="재생 위치에서 분할 (S)"
           >
@@ -123,6 +125,9 @@ export function Timeline(p: Props) {
             title="선택 클립 삭제 (Delete)"
           >
             삭제
+          </button>
+          <button disabled={p.locked || p.selectedIds.length < 2} onClick={p.onMerge}>
+            합치기
           </button>
           <button
             aria-label="선택 클립 왼쪽 이동"
@@ -177,7 +182,7 @@ export function Timeline(p: Props) {
             onPointerDown={seekPointer}
             onPointerMove={(e) => {
               if (e.currentTarget.hasPointerCapture(e.pointerId))
-                p.onSeek(Math.min(total, toUs(position(e) / zoom)));
+                p.onSeek(toUs(position(e) / zoom));
             }}
           >
             {ticks.map((t) => (
@@ -199,7 +204,7 @@ export function Timeline(p: Props) {
               return (
                 <div
                   key={clip.id}
-                  className={`timeline-clip ${p.selected === clip.id ? 'selected' : ''}`}
+                  className={`timeline-clip ${p.selectedIds.includes(clip.id) ? 'selected' : ''}`}
                   style={{
                     left: seconds(startUs) * zoom,
                     width: Math.max(5, seconds(endUs - startUs) * zoom),
@@ -208,8 +213,8 @@ export function Timeline(p: Props) {
                   role="button"
                   tabIndex={p.locked ? -1 : 0}
                   aria-label={`클립 ${index + 1}: ${asset.name}`}
-                  aria-pressed={p.selected === clip.id}
-                  onClick={() => p.onSelect(clip.id)}
+                  aria-pressed={p.selectedIds.includes(clip.id)}
+                  onClick={(e) => p.onSelect(clip.id, e.ctrlKey || e.metaKey)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.stopPropagation();
@@ -276,7 +281,7 @@ export function Timeline(p: Props) {
             aria-label="재생 위치"
             type="range"
             min={0}
-            max={Math.max(1, total)}
+            max={Math.max(1, total, p.timeUs)}
             step={1}
             value={p.timeUs}
             disabled={p.locked}

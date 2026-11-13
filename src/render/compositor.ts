@@ -1,3 +1,4 @@
+import { localFontFamily } from './local-fonts';
 import { dimensions, type Aspect, type Cue, type Transform } from '../project/model';
 
 export const FONT_FAMILY = 'Clip Noto';
@@ -38,8 +39,25 @@ export function renderFrame(
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, width, height);
   if (image && sourceWidth && sourceHeight) {
-    const rect = imageRect(sourceWidth, sourceHeight, width, height, transform);
-    ctx.drawImage(image, rect.x, rect.y, rect.width, rect.height);
+    const crop = transform.crop ?? { x: 0, y: 0, width: 1, height: 1 };
+    const rect = imageRect(
+      sourceWidth * crop.width,
+      sourceHeight * crop.height,
+      width,
+      height,
+      transform,
+    );
+    ctx.drawImage(
+      image,
+      crop.x * sourceWidth,
+      crop.y * sourceHeight,
+      crop.width * sourceWidth,
+      crop.height * sourceHeight,
+      rect.x,
+      rect.y,
+      rect.width,
+      rect.height,
+    );
   }
   const cue = cues.find((c) => timeUs >= c.startUs && timeUs < c.endUs);
   if (cue?.text) renderCue(ctx, cue, width, height);
@@ -48,7 +66,7 @@ export function renderFrame(
 
 function renderCue(ctx: Context, cue: Cue, width: number, height: number) {
   const fontSize = Math.max(8, cue.size * height);
-  ctx.font = `500 ${fontSize}px "${FONT_FAMILY}"`;
+  ctx.font = `500 ${fontSize}px "${cue.font ? localFontFamily(cue.font.postscriptName) : FONT_FAMILY}"`;
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
   const lines: string[] = [];

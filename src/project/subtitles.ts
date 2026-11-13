@@ -6,7 +6,7 @@ export function validateCueRange(project: Project, cue: Cue) {
     !Number.isSafeInteger(cue.endUs) ||
     cue.startUs < 0 ||
     cue.endUs <= cue.startUs ||
-    cue.endUs > duration(project)
+    cue.endUs > Number.MAX_SAFE_INTEGER
   ) {
     throw new Error('자막 시간을 영상 범위 안에서 시작 < 끝으로 지정하세요.');
   }
@@ -53,7 +53,7 @@ export function cueDragRange(
       cue.startUs + deltaUs,
       edges.flatMap((edge) => [edge, edge - length]),
     );
-    const startUs = Math.round(Math.max(0, Math.min(Math.max(0, end - length), start)));
+    const startUs = Math.round(Math.max(0, Math.min(Number.MAX_SAFE_INTEGER - length, start)));
     return { startUs, endUs: startUs + length };
   }
   if (mode === 'start')
@@ -66,7 +66,10 @@ export function cueDragRange(
   return {
     startUs: cue.startUs,
     endUs: Math.round(
-      Math.min(end, Math.max(cue.startUs + minimum, snapped(cue.endUs + deltaUs, edges))),
+      Math.min(
+        Number.MAX_SAFE_INTEGER,
+        Math.max(cue.startUs + minimum, snapped(cue.endUs + deltaUs, edges)),
+      ),
     ),
   };
 }

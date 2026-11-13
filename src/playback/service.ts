@@ -1,3 +1,4 @@
+import { localFontPayload } from '../render/local-fonts';
 import { timelineAudio, AUDIO_RATE } from '../audio/timeline-audio';
 import { MediaRegistry } from '../media/registry';
 import { duration, seconds, toUs, type Project } from '../project/model';
@@ -111,19 +112,22 @@ export class PlaybackService {
       requestId: ++this.requestId,
       ...job,
       files: this.registry.files(),
+      fonts: localFontPayload(job.project),
     });
   }
   seek(timeUs: number) {
     this.pause();
     this.generation++;
-    const end = this.project ? duration(this.project) : 0;
+    const end = Number.MAX_SAFE_INTEGER;
     this.notify({ timeUs: Math.round(Math.max(0, Math.min(end, timeUs))), error: undefined });
     this.requestFrame(this.state.timeUs);
   }
   async play() {
     const project = this.project;
     if (!project || !duration(project) || this.state.playing) return;
-    if (project.clips.some((c) => !this.registry.has(c.assetId))) {
+    if (
+      project.clips.some((c) => (c.parts ?? [c]).some((part) => !this.registry.has(part.assetId)))
+    ) {
       this.notify({ error: '누락된 원본을 먼저 다시 연결하세요.' });
       return;
     }
@@ -131,8 +135,8 @@ export class PlaybackService {
     const token = ++this.audioToken;
     const startUs = this.state.timeUs;
     const endUs = duration(project);
-    const sound = project.clips.some(
-      (c) => project.assets.find((a) => a.id === c.assetId)?.hasAudio,
+    const sound = project.clips.some((c) =>
+      (c.parts ?? [c]).some((part) => project.assets.find((a) => a.id === part.assetId)?.hasAudio),
     );
     this.notify({ playing: true, buffering: sound || !!this.canvas, error: undefined });
     try {

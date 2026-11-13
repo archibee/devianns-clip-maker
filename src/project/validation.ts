@@ -1,4 +1,4 @@
-import { duration, MAX_DURATION_US, type Project } from './model';
+import { duration, layout, type Project } from './model';
 
 export function parseProject(text: string): Project {
   if (text.length > 2_000_000) throw new Error('프로젝트 JSON은 2MB 이하만 지원합니다.');
@@ -13,6 +13,30 @@ export function parseProject(text: string): Project {
     typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
   const us = (v: unknown) => Number.isSafeInteger(v) && num(v, 0, Number.MAX_SAFE_INTEGER);
   const color = (v: unknown) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+  const transform = (t: unknown): boolean => {
+    if (
+      !object(t) ||
+      !['contain', 'cover'].includes(String(t.fit)) ||
+      !num(t.scale, 0.1, 5) ||
+      !num(t.x, -1, 1) ||
+      !num(t.y, -1, 1)
+    )
+      return false;
+    if (t.crop !== undefined) {
+      const c = t.crop;
+      if (
+        !object(c) ||
+        !num(c.x, 0, 1) ||
+        !num(c.y, 0, 1) ||
+        !num(c.width, 0.001, 1) ||
+        !num(c.height, 0.001, 1) ||
+        Number(c.x) + Number(c.width) > 1.000001 ||
+        Number(c.y) + Number(c.height) > 1.000001
+      )
+        return false;
+    }
+    return true;
+  };
   if (
     !object(p) ||
     p.schemaVersion !== 1 ||
@@ -27,9 +51,7 @@ export function parseProject(text: string): Project {
     !Array.isArray(p.assets) ||
     !Array.isArray(p.clips) ||
     !Array.isArray(p.subtitles) ||
-    p.assets.length > 500 ||
-    p.clips.length > 2000 ||
-    p.subtitles.length > 2000
+    p.assets.length > 500
   )
     return fail();
   const ids = new Set<string>();
@@ -67,15 +89,25 @@ export function parseProject(text: string): Project {
       return fail();
     const a = p.assets.find((x: Record<string, unknown>) => x.id === c.assetId);
     const t = c.transform;
-    if (
-      !a ||
-      Number(c.outUs) > a.durationUs ||
-      !['contain', 'cover'].includes(String(t.fit)) ||
-      !num(t.scale, 0.1, 5) ||
-      !num(t.x, -1, 1) ||
-      !num(t.y, -1, 1)
-    )
-      return fail();
+    if (!a || !transform(t) || (c.startUs !== undefined && !us(c.startUs))) return fail();
+    if (c.parts !== undefined) {
+      if (!Array.isArray(c.parts) || !c.parts.length) return fail();
+      let total = 0;
+      for (const part of c.parts) {
+        if (
+          !object(part) ||
+          !us(part.inUs) ||
+          !us(part.outUs) ||
+          Number(part.outUs) <= Number(part.inUs) ||
+          !transform(part.transform)
+        )
+          return fail();
+        const source = p.assets.find((x: Record<string, unknown>) => x.id === part.assetId);
+        if (!source || Number(part.outUs) > source.durationUs) return fail();
+        total += Number(part.outUs) - Number(part.inUs);
+      }
+      if (Number(c.outUs) > total) return fail();
+    } else if (Number(c.outUs) > a.durationUs) return fail();
   }
   for (const c of p.subtitles) {
     if (
@@ -93,7 +125,15 @@ export function parseProject(text: string): Project {
     )
       return fail();
   }
+  for (const c of p.subtitles)
+    if (
+      c.font !== undefined &&
+      (!object(c.font) || !str(c.font.postscriptName) || !str(c.font.label))
+    )
+      return fail();
   const result = p as Project;
-  if (duration(result) > MAX_DURATION_US) return fail();
+  if (!Number.isSafeInteger(duration(result))) return fail();
+  const rows = layout(result).sort((a, b) => a.startUs - b.startUs);
+  if (rows.some((c, i) => i > 0 && c.startUs < rows[i - 1].endUs)) return fail();
   return result;
 }

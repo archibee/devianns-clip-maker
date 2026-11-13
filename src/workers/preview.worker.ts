@@ -1,8 +1,8 @@
 import { openMedia, type OpenMedia } from '../media/input';
 import { VideoReader } from '../media/video-reader';
-import { duration, resolve, seconds, type Project } from '../project/model';
+import { duration, resolve, seconds, defaultTransform, type Project } from '../project/model';
 import { previewSize, renderFrame } from '../render/compositor';
-import { loadFont } from '../render/font';
+import { loadFont, loadProvidedFonts } from '../render/font';
 
 type FrameRequest = {
   type: 'frame';
@@ -10,6 +10,7 @@ type FrameRequest = {
   generation: number;
   project: Project;
   timeUs: number;
+  fonts?: import('../render/local-fonts').LocalFontPayload[];
   files: { id: string; file: File }[];
 };
 let media: OpenMedia | undefined;
@@ -20,12 +21,16 @@ self.onmessage = async (event: MessageEvent<FrameRequest>) => {
   const job = event.data;
   try {
     await loadFont();
+    await loadProvidedFonts(job.project, job.fonts ?? []);
     const size = previewSize(job.project.aspect);
     if (!canvas || canvas.width !== size.width || canvas.height !== size.height)
       canvas = new OffscreenCanvas(size.width, size.height);
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('미리보기 캔버스를 사용할 수 없습니다.');
-    const item = resolve(job.project, Math.min(job.timeUs, Math.max(0, duration(job.project) - 1)));
+    const item =
+      job.timeUs > duration(job.project)
+        ? null
+        : resolve(job.project, Math.min(job.timeUs, Math.max(0, duration(job.project) - 1)));
     if (item) {
       if (currentId !== item.clip.assetId) {
         await reader?.close();
@@ -47,7 +52,7 @@ self.onmessage = async (event: MessageEvent<FrameRequest>) => {
         job.project.subtitles,
         job.timeUs,
       );
-    } else ctx.clearRect(0, 0, canvas.width, canvas.height);
+    } else renderFrame(ctx, null, 0, 0, defaultTransform(), job.project.subtitles, job.timeUs);
     const bitmap = canvas.transferToImageBitmap();
     self.postMessage(
       { type: 'frame', requestId: job.requestId, generation: job.generation, bitmap },

@@ -2,9 +2,9 @@ import {
   clipDuration,
   defaultTransform,
   duration,
-  MAX_DURATION_US,
   newId,
-  resolve,
+  layout,
+  mediaLayout,
   type Asset,
   type Clip,
   type Cue,
@@ -17,6 +17,9 @@ export type Command =
   | { type: 'insert'; assetId: string; index: number }
   | { type: 'split'; timeUs: number }
   | { type: 'delete'; id: string }
+  | { type: 'deleteClips'; ids: string[] }
+  | { type: 'merge'; ids: string[] }
+  | { type: 'pasteClips'; clips: Clip[]; timeUs: number }
   | { type: 'trim'; id: string; inUs: number; outUs: number }
   | { type: 'move'; id: string; index: number }
   | { type: 'transform'; id: string; transform: Clip['transform'] }
@@ -42,22 +45,23 @@ export function applyCommand(p: Project, cmd: Command): Project {
         outUs: asset.durationUs,
         transform: defaultTransform(),
       });
-      result = { ...p, clips };
+      result = { ...p, clips: pack(clips) };
       break;
     }
     case 'split': {
       if (!Number.isSafeInteger(cmd.timeUs) || cmd.timeUs <= 0 || cmd.timeUs >= duration(p))
         return p;
-      const item = resolve(p, cmd.timeUs);
+      const item = layout(p).find((c) => c.startUs <= cmd.timeUs && cmd.timeUs < c.endUs);
       let clips = p.clips;
-      if (item && item.sourceUs > item.clip.inUs && item.sourceUs < item.clip.outUs) {
+      const sourceUs = item ? item.clip.inUs + cmd.timeUs - item.startUs : 0;
+      if (item && sourceUs > item.clip.inUs && sourceUs < item.clip.outUs) {
         const index = p.clips.indexOf(item.clip);
         clips = [...p.clips];
         clips.splice(
           index,
           1,
-          { ...item.clip, outUs: item.sourceUs },
-          { ...item.clip, id: newId(), inUs: item.sourceUs },
+          { ...item.clip, outUs: sourceUs },
+          { ...item.clip, id: newId(), startUs: cmd.timeUs, inUs: sourceUs },
         );
       }
       let changedCue = false;
@@ -78,6 +82,51 @@ export function applyCommand(p: Project, cmd: Command): Project {
     case 'delete':
       result = { ...p, clips: p.clips.filter((c) => c.id !== cmd.id) };
       break;
+    case 'deleteClips':
+      result = { ...p, clips: p.clips.filter((c) => !cmd.ids.includes(c.id)) };
+      break;
+    case 'pasteClips': {
+      if (!Number.isSafeInteger(cmd.timeUs) || cmd.timeUs < 0)
+        throw new Error('붙여넣기 위치가 올바르지 않습니다.');
+      let cursor = cmd.timeUs;
+      const copies = cmd.clips.map((c) => {
+        const copy = { ...structuredClone(c), id: newId(), startUs: cursor };
+        cursor += clipDuration(c);
+        return copy;
+      });
+      if (!Number.isSafeInteger(cursor)) throw new Error('타임라인 시간이 너무 큽니다.');
+      if (layout(p).some((c) => c.startUs < cursor && c.endUs > cmd.timeUs))
+        throw new Error('영상이 겹칩니다. 빈 위치나 타임라인 끝에 붙여넣으세요.');
+      const existing = layout(p).map((c) => ({ ...c.clip, startUs: c.startUs }));
+      result = { ...p, clips: [...existing, ...copies].sort((a, b) => a.startUs! - b.startUs!) };
+      break;
+    }
+    case 'merge': {
+      const selected = p.clips.filter((c) => cmd.ids.includes(c.id));
+      if (selected.length < 2) return p;
+      const parts = mediaLayout(p)
+        .filter((c) => cmd.ids.includes(c.clip.id))
+        .map((c) => ({
+          assetId: c.clip.assetId,
+          inUs: c.clip.inUs,
+          outUs: c.clip.outUs,
+          transform: structuredClone(c.clip.transform),
+        }));
+      const length = parts.reduce((sum, c) => sum + c.outUs - c.inUs, 0);
+      const merged: Clip = {
+        id: newId(),
+        assetId: parts[0].assetId,
+        inUs: 0,
+        outUs: length,
+        transform: structuredClone(parts[0].transform),
+        parts,
+      };
+      const index = p.clips.findIndex((c) => cmd.ids.includes(c.id));
+      const clips = p.clips.filter((c) => !cmd.ids.includes(c.id));
+      clips.splice(index, 0, merged);
+      result = { ...p, clips: pack(clips) };
+      break;
+    }
     case 'trim': {
       const clip = p.clips.find((c) => c.id === cmd.id);
       if (!clip) return p;
@@ -88,15 +137,20 @@ export function applyCommand(p: Project, cmd: Command): Project {
         !Number.isSafeInteger(cmd.outUs) ||
         cmd.inUs < 0 ||
         cmd.outUs <= cmd.inUs ||
-        cmd.outUs > asset.durationUs
+        cmd.outUs >
+          (clip.parts ? clip.parts.reduce((sum, c) => sum + c.outUs - c.inUs, 0) : asset.durationUs)
       ) {
         throw new Error('원본 범위 안에서 시작 < 끝으로 지정하세요.');
       }
       result = {
         ...p,
-        clips: p.clips.map((c) =>
-          c.id === cmd.id ? { ...c, inUs: cmd.inUs, outUs: cmd.outUs } : c,
-        ),
+        clips: layout(p).map((row, index) => {
+          const delta = cmd.outUs - cmd.inUs - clipDuration(clip);
+          const selectedIndex = p.clips.indexOf(clip);
+          return row.clip.id === cmd.id
+            ? { ...row.clip, startUs: row.startUs, inUs: cmd.inUs, outUs: cmd.outUs }
+            : { ...row.clip, startUs: row.startUs + (index > selectedIndex ? delta : 0) };
+        }),
       };
       break;
     }
@@ -105,13 +159,23 @@ export function applyCommand(p: Project, cmd: Command): Project {
       if (!clip) return p;
       const clips = p.clips.filter((c) => c.id !== cmd.id);
       clips.splice(Math.max(0, Math.min(clips.length, cmd.index)), 0, clip);
-      result = { ...p, clips };
+      result = { ...p, clips: pack(clips) };
       break;
     }
     case 'transform':
       result = {
         ...p,
-        clips: p.clips.map((c) => (c.id === cmd.id ? { ...c, transform: cmd.transform } : c)),
+        clips: p.clips.map((c) =>
+          c.id === cmd.id
+            ? {
+                ...c,
+                transform: cmd.transform,
+                ...(c.parts
+                  ? { parts: c.parts.map((part) => ({ ...part, transform: cmd.transform })) }
+                  : {}),
+              }
+            : c,
+        ),
       };
       break;
     case 'cue': {
@@ -136,9 +200,17 @@ export function applyCommand(p: Project, cmd: Command): Project {
       result = { ...p, ...cmd.patch };
       break;
   }
-  if (duration(result) > MAX_DURATION_US)
-    throw new Error('현재 버전은 프로젝트 길이 5분까지 편집합니다.');
+  if (!Number.isSafeInteger(duration(result))) throw new Error('타임라인 시간이 너무 큽니다.');
   return result;
+}
+
+function pack(clips: Clip[]) {
+  let cursor = 0;
+  return clips.map((c) => {
+    const next = { ...c, startUs: cursor };
+    cursor += clipDuration(c);
+    return next;
+  });
 }
 
 export type History = { present: Project; past: Project[]; future: Project[] };
@@ -182,7 +254,10 @@ export function trimAt(p: Project, id: string, side: 'in' | 'out', deltaUs: numb
     inUs: side === 'in' ? Math.max(0, Math.min(c.outUs - minimum, c.inUs + deltaUs)) : c.inUs,
     outUs:
       side === 'out'
-        ? Math.min(a.durationUs, Math.max(c.inUs + minimum, c.outUs + deltaUs))
+        ? Math.min(
+            c.parts ? c.parts.reduce((sum, p) => sum + p.outUs - p.inUs, 0) : a.durationUs,
+            Math.max(c.inUs + minimum, c.outUs + deltaUs),
+          )
         : c.outUs,
   };
 }
