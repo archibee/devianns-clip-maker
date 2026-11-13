@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-기본 주소: **http://127.0.0.1:5173/ssg-clip-maker/**
+기본 주소: **http://127.0.0.1:5173/**
 
 Windows PowerShell에서 `npm.ps1` 실행 정책에 걸리면 같은 명령의 `npm`을 `npm.cmd`로 실행합니다. 이번 작업 환경에는 별도로 검증한 Node.js 24.22.3이 `.tools/node-v24.22.3-win-x64/`에 준비되어 있습니다. 이 개발 도구 폴더는 Git에 포함하지 않습니다.
 
@@ -77,7 +77,7 @@ npm run test:browser
 npm run test:preview
 ```
 
-첫 명령은 합성 영상·비프음을 만들고 실제 UI 및 9개 해상도/FPS 조합, 자막·A/V sync·취소·복구를 검사합니다. 두 번째 명령은 앞서 생성한 fixture와 `dist/`를 사용하며, 임시 preview 서버를 띄워 빌드 결과의 Worker·폰트·오디오 출력·반응형 화면을 검사한 뒤 종료합니다.
+첫 명령은 합성 영상·비프음을 만들고 실제 UI 및 9개 해상도/FPS 조합, 자막·A/V sync·취소·복구를 검사합니다. 두 번째 명령은 앞서 생성한 fixture와 `dist/`를 사용하며, 경로 보정이나 SPA fallback이 없는 임시 정적 서버에서 `/`와 `/devianns-clip-maker/`를 각각 검사합니다. Worker·폰트·오디오 출력·반응형 화면과 앱 파일 로딩 실패 안내까지 확인한 뒤 서버를 종료합니다.
 
 Windows에서는 설치된 Edge를 사용합니다. 다른 OS는 Playwright Chromium을 준비하거나 `BROWSER_CHANNEL`을 지정하세요. 빠른 회귀 검사 시 `TEST_MATRIX=0`으로 9개 조합 반복만 생략할 수 있습니다. 검사 결과와 생성 영상은 Git에서 제외하는 `test-results/`에 저장합니다.
 
@@ -99,9 +99,9 @@ UI는 미디어 엔진을 직접 다루지 않고 프로젝트 명령 및 재생
 
 ## 정적 배포
 
-`npm run build` 결과인 `dist/`만 호스팅하면 됩니다. 서버 API나 COOP/COEP 설정은 필수 조건이 아닙니다. 저장소의 Pages 설정에서 **GitHub Actions**를 배포 소스로 선택하면 [workflow](./.github/workflows/pages.yml)가 main push 시 검사·빌드·배포하도록 준비되어 있습니다. 현재 저장소에는 GitHub remote가 없어 실제 배포 검증을 하지 않았습니다.
+`npm run build` 결과인 `dist/`만 호스팅하면 됩니다. 서버 API나 COOP/COEP 설정은 필수 조건이 아닙니다. 저장소의 Pages 설정에서 **GitHub Actions**를 배포 소스로 선택하면 [workflow](./.github/workflows/pages.yml)가 main push 시 검사·빌드·배포하도록 준비되어 있습니다. 실제 공개 사이트에 대한 수정 반영은 새 빌드의 재배포 후 확인해야 합니다.
 
-기본 Vite `base`는 `/ssg-clip-maker/`입니다. 다른 저장소 이름이나 루트 도메인에 배포한다면 `vite.config.ts`의 base를 바꿔 빌드하고 Worker·폰트·다운로드 경로를 재검사하세요. 기본 구현은 runtime CDN과 서버 rewrite에 의존하지 않습니다.
+기본 Vite `base`는 `./`입니다. 특정 저장소 이름에 고정하지 않아 같은 빌드가 루트 도메인과 저장소 하위 경로에서 동작합니다. 폰트도 Vite의 asset URL 처리로 Worker 위치를 기준으로 올바르게 읽습니다. 기본 구현은 runtime CDN과 서버 rewrite에 의존하지 않습니다. 소스 루트의 `index.html`은 Vite 개발 진입점이므로 빌드 없이 그대로 배포하는 파일이 아닙니다.
 
 ## 설계 및 작업 문서
 

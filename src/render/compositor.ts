@@ -1,20 +1,6 @@
 import { dimensions, type Aspect, type Cue, type Transform } from '../project/model';
 
 export const FONT_FAMILY = 'Clip Noto';
-let fontPromise: Promise<void> | undefined;
-export function loadFont() {
-  return (fontPromise ??= (async () => {
-    const font = new FontFace(FONT_FAMILY, `url(${import.meta.env.BASE_URL}fonts/NotoSansKR.ttf)`);
-    await font.load();
-    const scope = globalThis as unknown as { fonts?: FontFaceSet; document?: Document };
-    const fonts = scope.fonts ?? scope.document?.fonts;
-    if (!fonts) throw new Error('이 환경은 편집용 폰트 로딩을 지원하지 않습니다.');
-    fonts.add(font);
-  })().catch((error) => {
-    fontPromise = undefined;
-    throw error;
-  }));
-}
 
 export function imageRect(
   sourceWidth: number,

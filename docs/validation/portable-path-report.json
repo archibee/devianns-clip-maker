@@ -1,0 +1,29 @@
+{
+  "origin": "http://127.0.0.1:52175",
+  "mounts": [
+    "/",
+    "/devianns-clip-maker/"
+  ],
+  "outputs": [
+    {
+      "mount": "/",
+      "width": 854,
+      "height": 480,
+      "end": 2,
+      "audio": "aac"
+    },
+    {
+      "mount": "/devianns-clip-maker/",
+      "width": 854,
+      "height": 480,
+      "end": 2,
+      "audio": "aac"
+    }
+  ],
+  "errors": [],
+  "failures": [],
+  "externalRequests": [],
+  "unsupportedBanner": true,
+  "failedBundleBanner": true,
+  "success": true
+}

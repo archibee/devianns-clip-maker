@@ -1,7 +1,8 @@
 import { openMedia, type OpenMedia } from '../media/input';
 import { VideoReader } from '../media/video-reader';
 import { duration, resolve, seconds, type Project } from '../project/model';
-import { loadFont, previewSize, renderFrame } from '../render/compositor';
+import { previewSize, renderFrame } from '../render/compositor';
+import { loadFont } from '../render/font';
 
 type FrameRequest = {
   type: 'frame';

@@ -23,7 +23,8 @@ import {
   type Project,
 } from '../project/model';
 import { parseProject } from '../project/validation';
-import { loadFont, renderFrame } from '../render/compositor';
+import { renderFrame } from '../render/compositor';
+import { loadFont } from '../render/font';
 import {
   checkSupport,
   estimateBytes,

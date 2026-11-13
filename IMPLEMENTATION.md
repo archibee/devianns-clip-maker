@@ -96,3 +96,13 @@
 5. URL·브라우저·OS·검사 결과를 이 문서에 기록하고 CHECKLIST.md의 F09 표시만 `[v]`로 바꾼다. 항목 문구와 기준 해시는 변경하지 않는다.
 
 프로젝트 자체의 배포 라이선스 선정은 소유자가 결정할 사항이다. 코드 커밋·push·실제 배포는 이번 작업에서 수행하지 않았다.
+
+## 공개 웹 흰 화면 수정 (2026-11-14)
+
+저장소 홈페이지에 등록된 `https://devianns-clip-maker.vercel.app/`를 실제 Edge로 열어 빈 body를 확인했다. HTML은 HTTP 200이었지만 `/ssg-clip-maker/assets/` 아래의 앱 JavaScript, React/media 청크, CSS가 HTTP 404였다. 이전 저장소 경로에 고정된 Vite base와 실제 루트 배포 위치가 달라 발생한 시작 실패다. 이 관찰은 배포 서버 종류 자체의 결함을 뜻하지 않는다.
+
+Vite base를 상대 경로 `./`로 변경했다. 단순 문자열 BASE_URL로 폰트를 요청하면 Worker에서는 잘못된 assets/fonts 경로가 될 수 있으므로 전용 font 모듈에서 Vite asset URL import를 사용한다. 순수 합성/좌표 계산과 브라우저 폰트 로더를 분리해 Node 단위 검사도 유지한다. 초기 HTML에는 로딩 안내와 앱 파일 로딩 실패 안내를 추가했다.
+
+회귀 검사는 Vite preview의 경로 보정에 기대지 않는 실제 정적 파일 서버로 변경했다. 동일한 dist를 `/`와 `/devianns-clip-maker/`에 각각 올려 화면, Worker, 폰트, 임포트, 480p MP4/AAC 출력 및 다운로드를 검사한다. 앱 JavaScript를 고의로 404 처리했을 때 빈 화면 대신 오류 문구가 표시되는지도 검사한다. 공개 사이트에는 아직 이 로컬 수정본을 배포하지 않았다. 고정 체크리스트 및 이전 검사 기록은 변경하지 않는다.
+
+단위 검사 8개, 타입 검사·프로덕션 빌드, 두 정적 배포 경로 검사, 새 개발 루트의 브라우저 회귀 검사(TEST_MATRIX=0)가 모두 통과했다. 관찰한 기존 공개 오류는 [blank-screen-before.json](./docs/validation/blank-screen-before.json), 수정 빌드의 두 경로 결과는 [portable-path-report.json](./docs/validation/portable-path-report.json)에 보관한다. 호스팅 이전용 설정이나 workflow는 변경하지 않았다.

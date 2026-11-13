@@ -2,7 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: '/ssg-clip-maker/',
+  // The same dist must work at a domain root and a repository subdirectory.
+  base: './',
   plugins: [react()],
   worker: { format: 'es' },
   build: {

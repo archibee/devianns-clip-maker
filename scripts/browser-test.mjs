@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
-const base = process.env.TEST_URL || 'http://127.0.0.1:5173/ssg-clip-maker/';
+const base = process.env.TEST_URL || 'http://127.0.0.1:5173/';
 await mkdir('test-results', { recursive: true });
 const browser = await chromium.launch({
   channel: process.env.BROWSER_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined),
