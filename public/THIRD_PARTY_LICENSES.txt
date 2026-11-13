@@ -4,7 +4,7 @@ https://registry.npmjs.org/mediabunny/-/mediabunny-1.66.0.tgz
 https://github.com/Vanilagy/mediabunny
 Noto Sans KR: SIL Open Font License 1.1
 
-Third-party licenses bundled with SSG Clip Maker
+Third-party licenses bundled with Devianns Clip Maker
 
 React / React DOM
 MIT License

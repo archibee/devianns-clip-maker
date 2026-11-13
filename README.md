@@ -1,4 +1,4 @@
-# SSG Clip Maker
+# Devianns Clip Maker
 
 로컬 영상으로 컷을 만들고, 한글 자막을 입혀 내보내는 브라우저 영상 편집기입니다. GitHub Pages 같은 정적 호스트에서 실행하며 영상·소리·자막은 서버에 업로드하지 않습니다.
 

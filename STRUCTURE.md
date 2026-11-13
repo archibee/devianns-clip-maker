@@ -1,4 +1,4 @@
-# ssg-clip-maker 상세 설계
+# Devianns Clip Maker 상세 설계
 
 설계 기준일: 2026-11-14 · 상태: 첫 편집기 구현 · 문서 버전: 2
 
