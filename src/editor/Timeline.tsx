@@ -3,13 +3,16 @@ import { layout, duration, timecode, seconds, toUs, type Project } from '../proj
 import { trimAt, type Command } from '../project/commands';
 import { ASSET_DRAG, CLIP_DRAG } from './AssetPanel';
 import { PanelTitle } from './Panel';
+import { SubtitleBlock } from './SubtitleBlock';
 
 type Props = {
   project: Project;
   timeUs: number;
   selected?: string;
+  selectedCue?: string;
   locked: boolean;
   onSelect: (id: string) => void;
+  onSelectCue: (id: string) => void;
   onSeek: (us: number) => void;
   onCommand: (command: Command) => void;
   onSplit: () => void;
@@ -115,7 +118,7 @@ export function Timeline(p: Props) {
             ✂ 분할
           </button>
           <button
-            disabled={p.locked || !p.selected}
+            disabled={p.locked || (!p.selected && !p.selectedCue)}
             onClick={p.onDelete}
             title="선택 클립 삭제 (Delete)"
           >
@@ -249,16 +252,16 @@ export function Timeline(p: Props) {
           </div>
           <div className="subtitle-lane" style={{ width }}>
             {p.project.subtitles.map((c) => (
-              <span
+              <SubtitleBlock
                 key={c.id}
-                style={{
-                  left: seconds(c.startUs) * zoom,
-                  width: Math.max(4, seconds(c.endUs - c.startUs) * zoom),
-                }}
-                title={c.text}
-              >
-                T {c.text}
-              </span>
+                project={p.project}
+                cue={c}
+                selected={p.selectedCue === c.id}
+                locked={p.locked}
+                zoom={zoom}
+                onSelect={p.onSelectCue}
+                onCommand={p.onCommand}
+              />
             ))}
           </div>
         </div>

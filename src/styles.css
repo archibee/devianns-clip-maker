@@ -994,19 +994,33 @@ small {
   background: #191c25;
   margin-top: 6px;
 }
-.subtitle-lane > span {
+.subtitle-block {
   position: absolute;
   top: 4px;
   height: 25px;
   background: #4b425b;
   border: 1px solid #776589;
   border-radius: 3px;
-  padding: 4px 6px;
+  padding: 4px 10px;
   color: #d6c6eb;
   font-size: 9px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.subtitle-block.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  z-index: 2;
+}
+.subtitle-block.invalid {
+  outline-color: #ff9b9b;
+}
+.subtitle-label {
+  pointer-events: none;
 }
 .timeline-footer {
   height: 37px;

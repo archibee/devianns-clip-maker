@@ -108,6 +108,7 @@ UI는 미디어 엔진을 직접 다루지 않고 프로젝트 명령 및 재생
 | 문서 | 역할 |
 | --- | --- |
 | [CHECKLIST.md](./CHECKLIST.md) | 순서가 고정된 36개 구현/검증 항목. 완료 표기 `[v]`만 변경 |
+| [checklist_v2.md](./checklist_v2.md) | 자막 블록 편집·동시 분할·재생·숫자 단축키 개선 및 문제 코드·검증 기록 |
 | [STRUCTURE.md](./STRUCTURE.md) | 전체 설계, UI 계약, 데이터·시간·메모리 정책, 공식 출처 |
 | [AGENTS.md](./AGENTS.md) | 다음 작업자의 구현·검증·인수인계 지침 |
 | [IMPLEMENTATION.md](./IMPLEMENTATION.md) | 구현 결정, 실측, 알려진 한계와 남은 작업 |

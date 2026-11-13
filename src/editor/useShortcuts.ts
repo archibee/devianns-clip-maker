@@ -9,6 +9,8 @@ export function useShortcuts({
   remove,
   undo,
   redo,
+  copyCue,
+  pasteCue,
 }: {
   locked: boolean;
   modal: boolean;
@@ -18,6 +20,8 @@ export function useShortcuts({
   remove: () => void;
   undo: () => void;
   redo: () => void;
+  copyCue: () => boolean;
+  pasteCue: () => boolean;
 }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -29,7 +33,16 @@ export function useShortcuts({
         target.closest('input,textarea,select,[contenteditable="true"],[role="dialog"]')
       )
         return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'c') {
+        if (copyCue()) e.preventDefault();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.altKey &&
+        !e.shiftKey &&
+        e.key.toLowerCase() === 'v'
+      ) {
+        if (!e.repeat && pasteCue()) e.preventDefault();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) redo();
         else undo();
@@ -43,10 +56,14 @@ export function useShortcuts({
         } else if (e.key === 'ArrowRight') {
           e.preventDefault();
           seekFrame(1);
-        } else if (e.key.toLowerCase() === 's' && !e.repeat) {
+        } else if ((e.key.toLowerCase() === 's' || (e.key === '1' && !e.shiftKey)) && !e.repeat) {
           e.preventDefault();
           split();
-        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        } else if (
+          e.key === 'Delete' ||
+          e.key === 'Backspace' ||
+          (e.key === '2' && !e.shiftKey && !e.repeat)
+        ) {
           e.preventDefault();
           remove();
         }
@@ -54,5 +71,5 @@ export function useShortcuts({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [locked, modal, toggle, seekFrame, split, remove, undo, redo]);
+  }, [locked, modal, toggle, seekFrame, split, remove, undo, redo, copyCue, pasteCue]);
 }

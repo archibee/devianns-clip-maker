@@ -22,7 +22,9 @@ import {
   layout,
   seconds,
   toUs,
+  newId,
   type Asset,
+  type Cue,
   type Project,
 } from '../project/model';
 import { parseProject } from '../project/validation';
@@ -47,6 +49,9 @@ export function App() {
   });
   const [exporter] = useState(() => new ExportService(setExportState));
   const [selected, setSelected] = useState<string>();
+  const [selectedCue, setSelectedCue] = useState<string>();
+  const [inspectorTab, setInspectorTab] = useState<'clip' | 'subtitle'>('clip');
+  const cueClipboard = useRef<Cue | undefined>(undefined);
   const [importing, setImporting] = useState(false);
   const importRef = useRef(false);
   const [message, setMessage] = useState<string>();
@@ -66,27 +71,64 @@ export function App() {
     typeof globalThis.VideoDecoder === 'function' &&
     typeof globalThis.OffscreenCanvas === 'function';
   function act(action: HistoryAction) {
-    if (lockedRef.current) return;
+    if (lockedRef.current) return false;
     try {
       const next = historyReducer(historyRef.current, action);
+      if (next === historyRef.current) return false;
+      playback.pause();
       historyRef.current = next;
       setHistory(next);
       setMessage(undefined);
+      return true;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
+      return false;
     }
   }
   function command(cmd: Command) {
-    act({ type: 'command', command: cmd });
+    return act({ type: 'command', command: cmd });
   }
   function split() {
     command({ type: 'split', timeUs: playState.timeUs });
   }
   function remove() {
-    if (selected) {
+    if (selectedCue) {
+      command({ type: 'deleteCue', id: selectedCue });
+      setSelectedCue(undefined);
+    } else if (selected) {
       command({ type: 'delete', id: selected });
       setSelected(undefined);
     }
+  }
+  function selectClip(id: string) {
+    playback.pause();
+    setSelected(id);
+    setSelectedCue(undefined);
+    setInspectorTab('clip');
+  }
+  function selectCue(id?: string) {
+    playback.pause();
+    setSelectedCue(id);
+    setSelected(undefined);
+    setInspectorTab('subtitle');
+  }
+  function copyCue() {
+    const cue = project.subtitles.find((c) => c.id === selectedCue);
+    if (!cue) return false;
+    cueClipboard.current = { ...cue };
+    return true;
+  }
+  function pasteCue() {
+    const source = cueClipboard.current;
+    if (!source) return false;
+    const cue = {
+      ...source,
+      id: newId(),
+      startUs: playState.timeUs,
+      endUs: playState.timeUs + source.endUs - source.startUs,
+    };
+    if (command({ type: 'cue', cue })) selectCue(cue.id);
+    return true;
   }
   function toggle() {
     if (playState.playing) playback.pause();
@@ -106,7 +148,23 @@ export function App() {
     const index = rows.findIndex((x) => playState.timeUs < (x.startUs + x.endUs) / 2);
     command({ type: 'insert', assetId, index: index < 0 ? rows.length : index });
   }
-  useShortcuts({ locked, modal: !!modal, toggle, seekFrame, split, remove, undo, redo });
+  useShortcuts({
+    locked,
+    modal: !!modal,
+    toggle,
+    seekFrame,
+    split,
+    remove,
+    undo,
+    redo,
+    copyCue,
+    pasteCue,
+  });
+  useEffect(() => {
+    if (selected && !project.clips.some((c) => c.id === selected)) setSelected(undefined);
+    if (selectedCue && !project.subtitles.some((c) => c.id === selectedCue))
+      setSelectedCue(undefined);
+  }, [project, selected, selectedCue]);
   useEffect(() => {
     playback.bind(project);
   }, [playback, project, registryVersion]);
@@ -251,6 +309,7 @@ export function App() {
             .then((text) => {
               act({ type: 'load', project: parseProject(text) });
               setSelected(undefined);
+              setSelectedCue(undefined);
               playback.seek(0);
             })
             .catch((error) => setMessage(error.message));
@@ -306,6 +365,10 @@ export function App() {
         <Inspector
           project={project}
           selected={selected}
+          selectedCue={selectedCue}
+          tab={inspectorTab}
+          onTabChange={setInspectorTab}
+          onSelectCue={selectCue}
           timeUs={playState.timeUs}
           locked={locked}
           onCommand={command}
@@ -314,9 +377,11 @@ export function App() {
         <Timeline
           project={project}
           selected={selected}
+          selectedCue={selectedCue}
           timeUs={playState.timeUs}
           locked={locked}
-          onSelect={setSelected}
+          onSelect={selectClip}
+          onSelectCue={selectCue}
           onSeek={(us) => playback.seek(us)}
           onCommand={command}
           onSplit={split}

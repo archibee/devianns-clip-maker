@@ -10,6 +10,7 @@ import {
   type Cue,
   type Project,
 } from './model';
+import { validateCueRange } from './subtitles';
 
 export type Command =
   | { type: 'assets'; assets: Asset[] }
@@ -20,6 +21,7 @@ export type Command =
   | { type: 'move'; id: string; index: number }
   | { type: 'transform'; id: string; transform: Clip['transform'] }
   | { type: 'cue'; cue: Cue }
+  | { type: 'cueRange'; id: string; startUs: number; endUs: number }
   | { type: 'deleteCue'; id: string }
   | { type: 'settings'; patch: Partial<Pick<Project, 'name' | 'aspect' | 'fps'>> };
 
@@ -44,17 +46,33 @@ export function applyCommand(p: Project, cmd: Command): Project {
       break;
     }
     case 'split': {
+      if (!Number.isSafeInteger(cmd.timeUs) || cmd.timeUs <= 0 || cmd.timeUs >= duration(p))
+        return p;
       const item = resolve(p, cmd.timeUs);
-      if (!item || item.sourceUs <= item.clip.inUs || item.sourceUs >= item.clip.outUs) return p;
-      const index = p.clips.indexOf(item.clip);
-      const clips = [...p.clips];
-      clips.splice(
-        index,
-        1,
-        { ...item.clip, outUs: item.sourceUs },
-        { ...item.clip, id: newId(), inUs: item.sourceUs },
-      );
-      result = { ...p, clips };
+      let clips = p.clips;
+      if (item && item.sourceUs > item.clip.inUs && item.sourceUs < item.clip.outUs) {
+        const index = p.clips.indexOf(item.clip);
+        clips = [...p.clips];
+        clips.splice(
+          index,
+          1,
+          { ...item.clip, outUs: item.sourceUs },
+          { ...item.clip, id: newId(), inUs: item.sourceUs },
+        );
+      }
+      let changedCue = false;
+      const subtitles = p.subtitles.flatMap((cue) => {
+        if (cue.startUs < cmd.timeUs && cmd.timeUs < cue.endUs) {
+          changedCue = true;
+          return [
+            { ...cue, endUs: cmd.timeUs },
+            { ...cue, id: newId(), startUs: cmd.timeUs },
+          ];
+        }
+        return [cue];
+      });
+      if (clips === p.clips && !changedCue) return p;
+      result = { ...p, clips, subtitles: changedCue ? subtitles : p.subtitles };
       break;
     }
     case 'delete':
@@ -63,6 +81,7 @@ export function applyCommand(p: Project, cmd: Command): Project {
     case 'trim': {
       const clip = p.clips.find((c) => c.id === cmd.id);
       if (!clip) return p;
+      if (clip.inUs === cmd.inUs && clip.outUs === cmd.outUs) return p;
       const asset = p.assets.find((a) => a.id === clip.assetId)!;
       if (
         !Number.isSafeInteger(cmd.inUs) ||
@@ -95,9 +114,21 @@ export function applyCommand(p: Project, cmd: Command): Project {
         clips: p.clips.map((c) => (c.id === cmd.id ? { ...c, transform: cmd.transform } : c)),
       };
       break;
-    case 'cue':
+    case 'cue': {
+      const previous = p.subtitles.find((c) => c.id === cmd.cue.id);
+      if (!previous || previous.startUs !== cmd.cue.startUs || previous.endUs !== cmd.cue.endUs)
+        validateCueRange(p, cmd.cue);
       result = { ...p, subtitles: [...p.subtitles.filter((c) => c.id !== cmd.cue.id), cmd.cue] };
       break;
+    }
+    case 'cueRange': {
+      const cue = p.subtitles.find((c) => c.id === cmd.id);
+      if (!cue || (cue.startUs === cmd.startUs && cue.endUs === cmd.endUs)) return p;
+      const updated = { ...cue, startUs: cmd.startUs, endUs: cmd.endUs };
+      validateCueRange(p, updated);
+      result = { ...p, subtitles: p.subtitles.map((c) => (c.id === cue.id ? updated : c)) };
+      break;
+    }
     case 'deleteCue':
       result = { ...p, subtitles: p.subtitles.filter((c) => c.id !== cmd.id) };
       break;

@@ -1,0 +1,343 @@
+{
+  "date": "2026-11-13T18:03:15.640Z",
+  "base": "http://127.0.0.1:5188/",
+  "checks": [
+    {
+      "name": "합성 영상/동기 오디오 fixture 생성",
+      "ms": 1555,
+      "result": "115109 bytes"
+    },
+    {
+      "name": "임포트·에셋 목록·버튼 및 우클릭 삽입",
+      "ms": 538,
+      "result": "2 clips"
+    },
+    {
+      "name": "시킹·분할·트림·재배열·실행 취소",
+      "ms": 1048,
+      "result": "3 clips, linked source ranges"
+    },
+    {
+      "name": "자막·미리보기·키보드 포커스 보호",
+      "ms": 1874,
+      "result": [
+        50,
+        107,
+        224,
+        255
+      ]
+    },
+    {
+      "name": "미리보기 재생·정지",
+      "ms": 1099,
+      "result": "audio-clock advanced"
+    },
+    {
+      "name": "UI 최종 편집 상태 내보내기·다운로드",
+      "ms": 11502,
+      "result": {
+        "duration": 3.8186666666666667,
+        "videoEnd": 3.8,
+        "width": 854,
+        "height": 480,
+        "videoCodec": "avc",
+        "audioCodec": "aac",
+        "onset": [
+          0.010104166666666666,
+          1.010875,
+          1.8101041666666666,
+          2.8000833333333333
+        ],
+        "visualOnsets": [
+          0,
+          1,
+          1.8,
+          2.8
+        ],
+        "avErrorsMs": [
+          10.104166666666666,
+          10.874999999999968,
+          10.10416666666658,
+          0.08333333333343518
+        ],
+        "frames": [
+          {
+            "time": 0.05,
+            "color": [
+              50,
+              107,
+              224,
+              255
+            ],
+            "flash": [
+              255,
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "time": 0.35,
+            "color": [
+              50,
+              107,
+              224,
+              255
+            ],
+            "flash": [
+              16,
+              16,
+              16,
+              255
+            ]
+          },
+          {
+            "time": 0.65,
+            "color": [
+              50,
+              107,
+              224,
+              255
+            ],
+            "flash": [
+              16,
+              16,
+              16,
+              255
+            ]
+          },
+          {
+            "time": 1.05,
+            "color": [
+              50,
+              107,
+              224,
+              255
+            ],
+            "flash": [
+              255,
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "time": 1.35,
+            "color": [
+              50,
+              107,
+              224,
+              255
+            ],
+            "flash": [
+              16,
+              16,
+              16,
+              255
+            ]
+          },
+          {
+            "time": 1.65,
+            "color": [
+              50,
+              107,
+              224,
+              255
+            ],
+            "flash": [
+              16,
+              16,
+              16,
+              255
+            ]
+          }
+        ],
+        "fps": 30,
+        "comparison": [
+          {
+            "time": 0.2,
+            "meanRgbError": 0.8140046296296296
+          },
+          {
+            "time": 1.2,
+            "meanRgbError": 2.0933333333333333
+          },
+          {
+            "time": 2.2,
+            "meanRgbError": 2.0727314814814815
+          }
+        ]
+      }
+    },
+    {
+      "name": "100회 시킹·최신 요청 프레임·50% 크기",
+      "ms": 4182,
+      "result": {
+        "requests": 101,
+        "pixel": [
+          50,
+          107,
+          224,
+          255
+        ],
+        "failures": [],
+        "width": 960,
+        "height": 540
+      }
+    },
+    {
+      "name": "취소 후 재시도·연속 3회 출력·직접 저장·저장 실패·원본 누락",
+      "ms": 9938,
+      "result": {
+        "states": [
+          "cancelled",
+          "completed",
+          "completed",
+          "completed",
+          "error",
+          "error"
+        ],
+        "memory": [
+          33104438,
+          33242126,
+          21467362
+        ],
+        "disk": {
+          "size": 129693,
+          "videoEnd": 2,
+          "audioCodec": "aac"
+        }
+      }
+    },
+    {
+      "name": "무음·회전·다른 해상도·WebM 대안",
+      "ms": 5594,
+      "result": {
+        "duration": 2,
+        "videoEnd": 2,
+        "width": 854,
+        "height": 480,
+        "videoCodec": "vp9",
+        "onset": [],
+        "visualOnsets": [],
+        "avErrorsMs": [],
+        "frames": [
+          {
+            "time": 0.05,
+            "color": [
+              0,
+              0,
+              0,
+              255
+            ],
+            "flash": [
+              0,
+              0,
+              0,
+              255
+            ]
+          },
+          {
+            "time": 0.35,
+            "color": [
+              0,
+              0,
+              0,
+              255
+            ],
+            "flash": [
+              0,
+              0,
+              0,
+              255
+            ]
+          },
+          {
+            "time": 0.65,
+            "color": [
+              0,
+              0,
+              0,
+              255
+            ],
+            "flash": [
+              0,
+              0,
+              0,
+              255
+            ]
+          },
+          {
+            "time": 1.05,
+            "color": [
+              0,
+              0,
+              0,
+              255
+            ],
+            "flash": [
+              0,
+              0,
+              0,
+              255
+            ]
+          },
+          {
+            "time": 1.35,
+            "color": [
+              0,
+              0,
+              0,
+              255
+            ],
+            "flash": [
+              0,
+              0,
+              0,
+              255
+            ]
+          },
+          {
+            "time": 1.65,
+            "color": [
+              0,
+              0,
+              0,
+              255
+            ],
+            "flash": [
+              0,
+              0,
+              0,
+              255
+            ]
+          }
+        ],
+        "fps": 45
+      }
+    },
+    {
+      "name": "손상 파일 오류 안내",
+      "ms": 158,
+      "result": "invalid container rejected"
+    },
+    {
+      "name": "자동 저장 복구·누락 원본·재연결",
+      "ms": 2440,
+      "result": "restored 3 clips and reconnected source"
+    }
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "capabilities": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0",
+    "codecs": {
+      "avc": true,
+      "vp9": true,
+      "vp8": true,
+      "aac": true,
+      "opus": true
+    }
+  },
+  "success": true
+}

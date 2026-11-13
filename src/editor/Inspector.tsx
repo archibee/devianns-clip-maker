@@ -44,8 +44,9 @@ export function NumberField({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
           const n = Number(draft);
-          if (draft !== '' && Number.isFinite(n) && n >= min && n <= max) onCommit(n);
-          else setDraft(String(value));
+          if (draft !== '' && Number.isFinite(n) && n >= min && n <= max) {
+            if (n !== value) onCommit(n);
+          } else setDraft(String(value));
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur();
@@ -58,17 +59,20 @@ export function NumberField({
 type Props = {
   project: Project;
   selected?: string;
+  selectedCue?: string;
+  tab: 'clip' | 'subtitle';
+  onTabChange: (tab: 'clip' | 'subtitle') => void;
+  onSelectCue: (id?: string) => void;
   timeUs: number;
   locked: boolean;
-  onCommand: (command: Command) => void;
+  onCommand: (command: Command) => boolean;
   onSeek: (us: number) => void;
 };
 export function Inspector(p: Props) {
-  const [tab, setTab] = useState<'clip' | 'subtitle'>('clip');
-  const [cueId, setCueId] = useState<string>();
+  const tab = p.tab;
   const clip = p.project.clips.find((c) => c.id === p.selected);
   const asset = p.project.assets.find((a) => a.id === clip?.assetId);
-  const cue = p.project.subtitles.find((c) => c.id === cueId);
+  const cue = p.project.subtitles.find((c) => c.id === p.selectedCue);
   const updateCue = (patch: Partial<Cue>) =>
     cue && p.onCommand({ type: 'cue', cue: { ...cue, ...patch } });
   const addCue = () => {
@@ -87,8 +91,7 @@ export function Inspector(p: Props) {
       x: 0.5,
       y: 0.9,
     };
-    p.onCommand({ type: 'cue', cue });
-    setCueId(cue.id);
+    if (p.onCommand({ type: 'cue', cue })) p.onSelectCue(cue.id);
   };
   return (
     <section className="inspector-panel panel">
@@ -96,10 +99,14 @@ export function Inspector(p: Props) {
         <span className="quality-badge">편집</span>
       </PanelTitle>
       <div className="tab-bar" role="tablist" aria-label="속성 종류">
-        <button role="tab" aria-selected={tab === 'clip'} onClick={() => setTab('clip')}>
+        <button role="tab" aria-selected={tab === 'clip'} onClick={() => p.onTabChange('clip')}>
           클립
         </button>
-        <button role="tab" aria-selected={tab === 'subtitle'} onClick={() => setTab('subtitle')}>
+        <button
+          role="tab"
+          aria-selected={tab === 'subtitle'}
+          onClick={() => p.onTabChange('subtitle')}
+        >
           자막 <small>{p.project.subtitles.length}</small>
         </button>
       </div>
@@ -286,10 +293,10 @@ export function Inspector(p: Props) {
             <div className="cue-list">
               {p.project.subtitles.map((c) => (
                 <button
-                  className={c.id === cueId ? 'active' : ''}
+                  className={c.id === p.selectedCue ? 'active' : ''}
                   key={c.id}
                   onClick={() => {
-                    setCueId(c.id);
+                    p.onSelectCue(c.id);
                     if (!p.locked) p.onSeek(c.startUs);
                   }}
                 >
@@ -386,7 +393,7 @@ export function Inspector(p: Props) {
                   disabled={p.locked}
                   onClick={() => {
                     p.onCommand({ type: 'deleteCue', id: cue.id });
-                    setCueId(undefined);
+                    p.onSelectCue(undefined);
                   }}
                 >
                   자막 삭제

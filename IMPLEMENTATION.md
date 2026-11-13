@@ -106,3 +106,7 @@ Vite base를 상대 경로 `./`로 변경했다. 단순 문자열 BASE_URL로 �
 회귀 검사는 Vite preview의 경로 보정에 기대지 않는 실제 정적 파일 서버로 변경했다. 동일한 dist를 `/`와 `/devianns-clip-maker/`에 각각 올려 화면, Worker, 폰트, 임포트, 480p MP4/AAC 출력 및 다운로드를 검사한다. 앱 JavaScript를 고의로 404 처리했을 때 빈 화면 대신 오류 문구가 표시되는지도 검사한다. 공개 사이트에는 아직 이 로컬 수정본을 배포하지 않았다. 고정 체크리스트 및 이전 검사 기록은 변경하지 않는다.
 
 단위 검사 8개, 타입 검사·프로덕션 빌드, 두 정적 배포 경로 검사, 새 개발 루트의 브라우저 회귀 검사(TEST_MATRIX=0)가 모두 통과했다. 관찰한 기존 공개 오류는 [blank-screen-before.json](./docs/validation/blank-screen-before.json), 수정 빌드의 두 경로 결과는 [portable-path-report.json](./docs/validation/portable-path-report.json)에 보관한다. 호스팅 이전용 설정이나 workflow는 변경하지 않았다.
+
+## v2 자막 편집·재생 개선
+
+자막 블록 선택·드래그/트림·내부 복사/붙여넣기·삭제, 영상/자막 동시 분할과 숫자 1·2를 기존 UI에 연결했다. 무음·오디오 중단/시계 정지·시작 대기와 첫 영상 프레임 준비를 구분해 재생 경로를 개선했다. 상세 문제 코드와 반영 내용은 [checklist_v2.md](./checklist_v2.md)에 기록한다. v2 단위 검사는 4개 파일 19개이며 실제 브라우저와 정적 배포 경로도 검증했다. 이전 기록과 고정 체크리스트는 수정하지 않는다.

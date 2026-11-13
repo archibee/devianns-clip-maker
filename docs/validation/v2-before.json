@@ -1,0 +1,37 @@
+{
+  "subtitleAttributes": {
+    "role": null,
+    "tabindex": null,
+    "selected": null
+  },
+  "samples": [
+    {
+      "hash": 1493978567,
+      "time": "0.031333",
+      "playLabel": "일시 정지"
+    },
+    {
+      "hash": 1054737886,
+      "time": "0.37",
+      "playLabel": "일시 정지"
+    },
+    {
+      "hash": 3584835546,
+      "time": "0.820667",
+      "playLabel": "일시 정지"
+    },
+    {
+      "hash": 1323929973,
+      "time": "1.151333",
+      "playLabel": "일시 정지"
+    },
+    {
+      "hash": 2940190264,
+      "time": "1.522",
+      "playLabel": "일시 정지"
+    }
+  ],
+  "afterUnchangedTrimBlur": "0.471333",
+  "blurPlayLabel": "일시 정지",
+  "errors": []
+}
