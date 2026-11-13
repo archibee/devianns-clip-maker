@@ -1,0 +1,14 @@
+{
+  "base": "http://127.0.0.1:4173/ssg-clip-maker/",
+  "errors": [],
+  "failures": [],
+  "externalRequests": [],
+  "output": {
+    "width": 854,
+    "height": 480,
+    "end": 2,
+    "audio": "aac"
+  },
+  "unsupportedBanner": true,
+  "success": true
+}

@@ -1,8 +1,8 @@
-﻿# ssg-clip-maker 상세 설계
+# ssg-clip-maker 상세 설계
 
-설계 기준일: 2026-11-14 · 상태: 구현 전 · 문서 버전: 1
+설계 기준일: 2026-11-14 · 상태: 첫 편집기 구현 · 문서 버전: 2
 
-이 문서는 정적 호스팅에서 실행되는 로컬 영상 편집기의 구현 기준이다. 기술 선택과 동작 계약은 아래와 같이 정한다. 코덱 지원, 성능, 라이브러리의 구체 API는 실제 구현 환경에서 검증한다. 현재 저장소에는 실행 코드가 없으며, 기능 및 브라우저 호환성 검증은 아직 수행하지 않았다.
+이 문서는 정적 호스팅에서 실행되는 로컬 영상 편집기의 구현 기준이다. 기술 선택과 동작 계약은 아래와 같이 정한다. 코덱 지원, 성능, 라이브러리의 구체 API는 실제 구현 환경에서 검증한다. 현재 저장소에는 첫 편집기와 검사 도구가 있으며 실제 Windows Edge 검증 결과는 IMPLEMENTATION.md에 기록한다. 공개 GitHub Pages 배포는 아직 검증하지 않았다.
 
 ## 1. 목표와 경계
 
@@ -84,7 +84,7 @@ UI는 코덱이나 muxer를 직접 호출하지 않는다. 미디어 어댑터�
 
 ## 5. 프로젝트 데이터 계약
 
-아래 타입은 구현 기준이며 실제 라이브러리 API를 뜻하지 않는다.
+아래는 최초 모델의 개념 설명이며 실제 직렬화 타입은 src/project/model.ts 및 프로젝트 검증기가 기준이다. 21절에 구현 명칭과 차이를 기록한다. 실제 라이브러리 API를 뜻하지 않는다.
 
 ```ts
 type Us = number; // 정수 마이크로초, 안전한 정수 범위 검사
@@ -106,8 +106,8 @@ type Asset = {
 type Clip = {
   id: string;
   assetId: string;
-  sourceInUs: Us;
-  sourceOutUs: Us; // exclusive
+  inUs: Us;
+  outUs: Us; // exclusive
   muted: boolean;
   gain: number; // 0..2, 초기값 1
   transform: {
@@ -159,8 +159,8 @@ File, object URL, 파일 핸들, VideoFrame, AudioData, 디코더는 별도의 �
 모든 구간은 `[start, end)`이다. 클립은 `0 ≤ sourceIn < sourceOut ≤ asset.duration`을 만족해야 한다. 타임라인 시작은 앞 클립 길이 합으로 계산하며 이 값을 중복 저장하지 않는다. 속도는 MVP에서 1배로 고정한다.
 
 ```text
-clipDuration = sourceOutUs - sourceInUs
-sourceTime = sourceInUs + (projectTime - clipTimelineStartUs)
+clipDuration = outUs - inUs
+sourceTime = inUs + (projectTime - clipTimelineStartUs)
 outputFrameTimeUs(n) = round(n × 1_000_000 × fps.denominator / fps.numerator)
 ```
 
@@ -302,7 +302,7 @@ JSON에는 원본 파일을 넣지 않고 Asset 메타데이터와 편집 정보
 
 ## 14. 예상 저장소 구조
 
-아래 디렉터리는 계획이며 현재 생성되어 있지 않다.
+아래는 계층별 구성이다. 실제 파일과 모듈의 현재 상태는 README.md의 모듈 지도를 참고한다.
 
 ```text
 src/
@@ -330,7 +330,7 @@ Vite build 결과 `dist/`만 배포한다. project Pages라면 base를 `/ssg-cli
 
 외부 서비스 키를 번들에 넣지 않는다. npm 의존성과 폰트의 라이선스·보안 상태를 기록하고, 실행 시 외부 CDN에서 엔진을 내려받지 않도록 번들한다. 사용 영상과 출력 영상은 저장소에 커밋하지 않는다. 테스트는 작고 재배포 가능한 합성 fixture를 사용한다.
 
-GitHub Actions의 빌드에는 런타임 서버가 필요 없으며, 배포 workflow는 필요한 최소 권한으로 구성한다. 앱 구현 전인 현재 문서 상태에 배포 성공 배지를 붙이지 않는다.
+GitHub Actions의 빌드에는 런타임 서버가 필요 없으며, 배포 workflow는 필요한 최소 권한으로 구성한다. 실제 배포가 검증되기 전에 배포 성공 배지를 붙이지 않는다.
 
 ## 16. 구현 순서와 완료 기준
 
@@ -393,3 +393,49 @@ GitHub Actions의 빌드에는 런타임 서버가 필요 없으며, 배포 work
 ## 19. 설계 변경 기록
 
 - 2026-11-14: 중복된 초기 파이프라인 문서를 상세 설계로 교체. mp4-muxer 대신 Mediabunny를 선정하고 코덱 협상, 비파괴 타임라인, 미리보기/출력 분리, 오디오 동기화, 자원 수명, 저장/복구, 단계별 검증 기준을 추가. 성능·라이선스·호환성에 대한 무조건 보장을 제거.
+
+## 20. 구현 착수 시 확정한 UI·요구사항 (2026-11-14)
+
+이번 사용자 요청은 이전 MVP의 30fps 고정 및 오디오 볼륨 UI보다 우선한다. 아래 계약을 적용하며 구현 순서는 고정된 CHECKLIST.md를 따른다. CHECKLIST.md는 최초 작성 후 문구·순서·항목을 수정하지 않고 완료 표기 [v]만 허용한다. 검증 결과와 추가 요구는 이 문서 및 IMPLEMENTATION.md에 기록한다.
+
+| UI 모듈 | 책임 | 입력/출력 |
+| --- | --- | --- |
+| Toolbar | 프로젝트 열기/저장, undo/redo, 도움말, 출력 열기 | 프로젝트 명령·파일 서비스 |
+| AssetPanel | 다중 임포트, 에셋 카드·썸네일·길이, 우클릭/삽입 버튼, 드래그 시작 | MediaRegistry → Asset DTO, insert 명령 |
+| PreviewPanel | 50% 크기 Canvas 표시, 버퍼링/미지원 표시 | PlaybackService의 시간·프레임 |
+| Transport | 재생/정지, 처음/끝, 프레임 이동, 현재/전체 시간 | playback/seek 요청 |
+| Timeline | 눈금·줌·스크롤, 플레이헤드, 클립 선택/삽입/재배열·트림 | project layout + 명령, seek |
+| Inspector | 선택 클립 원본 in/out·변환, 프로젝트 비율, 자막 편집 | 순수 project 명령 |
+| ExportDialog | 형식/해상도/FPS·지원 검사, 진행/취소/오류 | 최종 project snapshot + registry files → ExportService |
+
+표시 UI는 React로 나누며 media/render/playback/export는 React에 의존하지 않는다. 타임라인 drop 위치는 클립 경계 삽입이며 기존 클립 중간으로 drop하면 가까운 경계를 선택한다. 같은 트랙은 빈틈 없이 이어진다. 원본 에셋은 클립을 삭제해도 보관함에 남는다. 클립과 에셋의 드래그 데이터 타입을 분리한다.
+
+원본 오디오는 독립 트랙 편집 없이 영상 클립에 결합한다. in/out·이동·분할·삭제는 하나의 Clip 모델을 통해 영상과 오디오 모두에 적용한다. 오디오 볼륨/음소거 편집 UI는 이번 범위에서 제외한다. 내부 PCM 변환과 원본 무음 처리는 필요하다.
+
+출력은 1080p/720p/480p 및 30/45/60fps를 선택한다. 가로 크기는 1920×1080, 1280×720, 854×480이며 세로는 너비/높이를 교환하고 정사각은 짧은 변을 기준으로 한다. FPS는 Project와 ExportSettings에 30|45|60으로 제한해 저장한다. 프레임 계산은 n*1e6/fps에서 매번 반올림한다. 내보내기에서 선택한 FPS가 최종 스케줄러의 기준이다.
+
+미리보기는 1080p 기준 가로·세로 각각 절반(가로형 960×540)으로 합성한다. 이는 픽셀 수가 1/4인 표시 정책이며 실제 연산 시간의 절반 감소를 보장하지 않는다. 디코딩은 원본 코덱에 따라 여전히 고비용일 수 있다. 출력은 원본 파일을 다시 읽고 출력 크기로 공통 합성기를 실행한다.
+
+출력 시작 시 검증한 최종 프로젝트를 복제해 Worker에 전달하고 완료/취소까지 편집을 잠근다. 미리보기의 캔버스·오디오 재생 상태를 캡처해 출력하지 않는다. 지원 검사 실패 시 무음 대체나 다른 형식으로 자동 변경하지 않는다.
+
+### 구현 시 API 검토 자료
+
+- Mediabunny Media sinks: https://mediabunny.dev/guide/media-sinks
+- Mediabunny Media sources: https://mediabunny.dev/guide/media-sources
+- Vite 시작/정적 빌드: https://vite.dev/guide/
+
+이 자료의 API는 설치한 잠금 버전의 타입과 함께 확인한다. 설치 버전과 실제 검증 결과는 IMPLEMENTATION.md에 남긴다.
+
+## 21. 첫 구현의 확정 사항
+
+실제 파일은 README의 모듈 지도와 src/project/model.ts를 기준으로 한다. 직렬화 schemaVersion은 1이며 클립은 inUs/outUs와 transform(fit/scale/x/y)를 가진다. 원본 오디오 편집 속성은 저장하지 않는다. Project에는 aspect 및 fps를 저장하고 내보내기별 해상도/형식/FPS는 ExportSettings로 분리한다. 타임라인은 클립 배열 순서에서 도출한다. Asset에는 현재 구현에서 필요한 hasAudio와 코덱·파일 메타데이터를 보관하며 회전 정규화는 CanvasSink가 처리한다.
+
+미리보기와 출력 모두 Mediabunny CanvasSink의 순차 읽기와 lookahead 1장을 사용한다. 명시적인 raw VideoFrame 캐시를 추가하지 않고 canvas pool 3장과 라이브러리의 제한된 선행 디코딩을 사용한다. 이전에 제시한 큐 8개는 커스텀 코덱 큐 구현 시의 시작 예산이며 현재 라이브러리 내부 큐의 고정 보장치가 아니다. 미리보기 원본 읽기 캔버스는 긴 변 960 이하로 제한한다. 큰 원본의 실제 디코딩 비용·GPU 메모리는 별도다.
+
+오디오는 AudioSampleSink에서 PCM으로 복사 후 즉시 샘플을 해제하며 절대 원본 timestamp에 따른 선형 보간으로 48kHz stereo 블록을 만든다. 다운샘플링의 스튜디오 수준 품질이나 고급 필터를 보장하지 않는다. 별도 오디오 편집 UI는 없다. 미리보기는 약 0.7초까지만 미리 예약하고 늦게 도착한 블록은 재생 기준점을 다시 맞춘다.
+
+출력은 CanvasSource/AudioSampleSource의 add Promise를 기다려 backpressure를 적용하고 작은 시간 창으로 영상·소리를 번갈아 공급한다. FPS metadata를 인코더에 전달하므로 마지막 부분 프레임은 출력 프레임 눈금으로 반올림될 수 있다. 길이 허용 오차는 1프레임이다. MP4는 fastStart:false를 선택해 전체 mdat을 in-memory fast-start로 보관하지 않는다. 직접 파일 저장에서는 StreamTarget의 position을 FileSystemWritableFileStream.write에 전달해 랜덤 쓰기를 지원한다. 취소/실패 시 commit 전 디스크 스트림을 abort한다. OPFS는 검사에서 직접 저장 어댑터를 확인하는 데 사용하며 제품의 별도 OPFS 출력 선택지는 현재 없다.
+
+자동 저장은 IndexedDB를 사용하며 원본 File/영상은 저장하지 않는다. 이름·크기·수정 시각·길이·표시 크기·오디오 유무를 비교해 원본 재연결을 검사한다. 내용 해시는 현재 추가하지 않았다. 썸네일은 240×135, 최대 200개에 생성하고 에셋 메타데이터는 최대 500개까지 받는다. 프로젝트 JSON은 2MB 이하로 제한한다.
+
+구현·브라우저 결과와 남은 공개 배포 검증은 IMPLEMENTATION.md에서 관리한다. CHECKLIST.md와 CHECKLIST.sha256의 최초 원문은 유지한다.
