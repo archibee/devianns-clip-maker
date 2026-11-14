@@ -7,7 +7,21 @@ import {
   type Project,
 } from '../project/model';
 
-export const MEMORY_LIMIT = 256 * 1024 * 1024;
+// 설치된 Mediabunny BufferTarget의 ARRAY_BUFFER_MAX_SIZE와 동일하다.
+// 기기 RAM/브라우저의 실제 할당 가능량은 이 값보다 작을 수 있다.
+export const MEMORY_LIMIT = 2 ** 32;
+export const MEMORY_LIMIT_MIB = MEMORY_LIMIT / 1024 / 1024;
+export function exportSizeIssue(bytes:number,direct:boolean):string|undefined {
+  if(!Number.isSafeInteger(bytes)||bytes<0)return '예상 출력 용량이 지원 가능한 바이트 계산 범위를 초과합니다. 출력 설정을 낮추세요.';
+  if(!direct&&bytes>MEMORY_LIMIT)return `예상 출력 용량이 메모리 다운로드 한도 ${MEMORY_LIMIT_MIB}MiB를 초과합니다. 파일에 직접 저장을 선택하세요. 직접 저장에는 앱의 고정 용량 상한이 없습니다.`;
+  return undefined;
+}
+export function exportFailureMessage(error:unknown){
+  const message=error instanceof Error?error.message:String(error);
+  return /ArrayBuffer|array buffer|allocation|out of memory|exceeded maximum size/i.test(message)
+    ?'브라우저가 출력 버퍼를 할당하지 못했습니다. 파일에 직접 저장을 사용하거나 출력 해상도/FPS를 낮추세요.'
+    :message;
+}
 export const videoBitrate = (settings: ExportSettings) =>
   ((settings.resolution === 1080
     ? 8_000_000

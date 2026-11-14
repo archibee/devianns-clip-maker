@@ -1,6 +1,6 @@
 import { localFontPayload, prepareLocalFonts } from '../render/local-fonts';
 import { cueErrors, duration, type ExportSettings, type Project } from '../project/model';
-import { estimateBytes, MEMORY_LIMIT } from './settings';
+import { estimateBytes, exportSizeIssue, exportFailureMessage } from './settings';
 import type { MediaRegistry } from '../media/registry';
 
 export type ExportState = {
@@ -26,6 +26,8 @@ export class ExportService {
     let handle: FileSystemFileHandle | undefined;
     const filename = `${project.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').slice(0, 80) || 'clip'}.${settings.format}`;
     try {
+      const sizeIssue=exportSizeIssue(estimateBytes(project,settings),direct);
+      if(sizeIssue)throw new Error(sizeIssue);
       if (!duration(project)) throw new Error('타임라인에 영상을 추가하세요.');
       if (cueErrors(project).length) throw new Error(cueErrors(project)[0]);
       if (project.clips.some((c) => (c.parts ?? [c]).some((part) => !registry.has(part.assetId))))
@@ -49,10 +51,7 @@ export class ExportService {
             },
           ],
         });
-      } else if (estimateBytes(project, settings) > MEMORY_LIMIT)
-        throw new Error(
-          '예상 크기가 256MiB를 초과합니다. 파일 직접 저장 또는 낮은 출력 설정을 선택하세요.',
-        );
+      }
       await prepareLocalFonts(project);
       this.dispose();
       const requestId = ++this.requestId;
@@ -69,6 +68,7 @@ export class ExportService {
         else {
           clearTimeout(this.cancelTimer);
           if (data.type === 'completed') {
+            try {
             if (data.buffer)
               this.url = URL.createObjectURL(
                 new Blob([data.buffer], {
@@ -82,6 +82,7 @@ export class ExportService {
               url: this.url,
               filename,
             });
+            }catch(error){this.onState({status:'error',progress:0,stage:'다운로드 파일 준비 실패',error:`${exportFailureMessage(error)} 파일에 직접 저장으로 다시 시도하세요.`});}
           } else if (data.type === 'cancelled')
             this.onState({
               status: 'cancelled',

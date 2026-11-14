@@ -47,6 +47,7 @@
 ## 최종 편의 기능
 
 - [final_upgrade_v1.md](./final/final_upgrade_v1.md)
+- [final_upgrade_v2.md](./final/final_upgrade_v2.md)
 
 ## 기본 문서
 

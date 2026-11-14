@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { checkSupport, estimateBytes, MEMORY_LIMIT, type Support } from '../export/settings';
+import { checkSupport, estimateBytes, exportSizeIssue, type Support } from '../export/settings';
 import type { ExportService, ExportState } from '../export/service';
 import { cueErrors, dimensions, type ExportSettings, type Project } from '../project/model';
 import type { MediaRegistry } from '../media/registry';
@@ -24,6 +24,7 @@ export function ExportDialog(p: Props) {
   const [starting, setStarting] = useState(false);
   const locked = running || starting;
   const bytes = estimateBytes(p.project, settings);
+  const sizeIssue=exportSizeIssue(bytes,direct);
   const size = dimensions(p.project.aspect, settings.resolution);
   const issues = cueErrors(p.project);
   const missing = p.project.clips.some((c) =>
@@ -122,11 +123,8 @@ export function ExportDialog(p: Props) {
         <span>예상 용량</span>
         <strong>{(bytes / 1024 / 1024).toFixed(1)} MiB</strong>
       </div>
-      {!direct && bytes > MEMORY_LIMIT && (
-        <p className="inline-error">
-          메모리 다운로드 한도 256MiB를 초과합니다. 직접 저장 또는 낮은 설정을 선택하세요.
-        </p>
-      )}
+      {sizeIssue&&<p className="inline-error">{sizeIssue}</p>}
+      <p className="help-caption">큰 파일은 파일에 직접 저장을 권장합니다. 직접 저장은 파일 전체를 메모리에 담지 않으며 앱의 고정 용량 상한이 없습니다.</p>
       {missing && <p className="inline-error">누락된 원본 파일을 먼저 연결하세요.</p>}
       {issues.map((issue) => (
         <p key={issue} className="inline-error">
@@ -163,7 +161,7 @@ export function ExportDialog(p: Props) {
               !support?.supported ||
               missing ||
               !!issues.length ||
-              (!direct && bytes > MEMORY_LIMIT)
+              !!sizeIssue
             }
             onClick={() => {
               setStarting(true);

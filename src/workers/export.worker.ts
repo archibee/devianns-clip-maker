@@ -34,6 +34,9 @@ import {
   estimateBytes,
   hasAudio,
   MEMORY_LIMIT,
+  MEMORY_LIMIT_MIB,
+  exportSizeIssue,
+  exportFailureMessage,
   videoBitrate,
 } from '../export/settings';
 
@@ -80,10 +83,8 @@ async function run(job: Start) {
       throw new Error(issues[0] ?? '타임라인에 클립을 추가하세요.');
     const support = await checkSupport(project, job.settings);
     if (!support.supported) throw new Error(support.reason);
-    if (!job.handle && estimateBytes(project, job.settings) > MEMORY_LIMIT)
-      throw new Error(
-        '메모리 출력 한도(256MiB)를 초과합니다. 파일에 직접 저장하거나 길이/해상도를 낮추세요.',
-      );
+    const sizeIssue=exportSizeIssue(estimateBytes(project,job.settings),!!job.handle);
+    if(sizeIssue)throw new Error(sizeIssue);
     await loadFont();
     await loadProvidedFonts(job.project, job.fonts ?? []);
     check();
@@ -109,7 +110,7 @@ async function run(job: Start) {
       memory = new BufferTarget();
       target = memory;
       target.on('write', ({ end }) => {
-        if (end > MEMORY_LIMIT) throw new Error('실제 출력 크기가 메모리 한도를 초과했습니다.');
+        if (end > MEMORY_LIMIT) throw new Error(`실제 출력이 메모리 한도 ${MEMORY_LIMIT_MIB}MiB를 초과했습니다. 파일에 직접 저장을 선택하세요.`);
       });
     }
     output = new Output({
@@ -236,7 +237,7 @@ async function run(job: Start) {
       cancelled || (error instanceof DOMException && error.name === 'AbortError')
         ? 'cancelled'
         : 'error',
-      { message: error instanceof Error ? error.message : String(error) },
+      { message: exportFailureMessage(error) },
     );
   } finally {
     await audioIterator?.return(undefined);
