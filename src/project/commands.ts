@@ -17,6 +17,7 @@ import {
 } from './model';
 import { validateCueRange } from './subtitles';
 import { parseProject } from './validation';
+import { validateBlockPlacement } from './block-placement';
 
 export type Command =
   | { type: 'assets'; assets: Asset[] }
@@ -129,14 +130,7 @@ export function applyCommand(p: Project, cmd: Command): Project {
       };
       break;
     case 'placeBlock': {
-      if (
-        !Number.isInteger(cmd.lane) ||
-        cmd.lane < 0 ||
-        cmd.lane >= laneCount(p) ||
-        !Number.isSafeInteger(cmd.timeUs) ||
-        cmd.timeUs < 0
-      )
-        throw new Error('블록 위치가 올바르지 않습니다.');
+      validateBlockPlacement(p, cmd.id, cmd.lane, cmd.timeUs);
       result = {
         ...p,
         clips: layout(p).map((r) => ({

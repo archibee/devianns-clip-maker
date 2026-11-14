@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type DragEvent, type PointerEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type PointerEvent,
+} from 'react';
 import {
   layout,
   laneCount,
@@ -11,15 +18,17 @@ import {
   type Project,
 } from '../project/model';
 import { trimAt, type Command } from '../project/commands';
-import { ASSET_DRAG, CLIP_DRAG } from './AssetPanel';
+import { ASSET_DRAG } from './AssetPanel';
 import { PanelTitle } from './Panel';
 import { SubtitleBlock } from './SubtitleBlock';
 import { TimelineIcon } from './TimelineIcon';
+import { VideoBlock } from './VideoBlock';
+import { followPlayhead } from './timeline-scroll';
 
 type Props = {
   activeLane: number;
   onLaneChange: (lane: number) => void;
-  onClearSelection:()=>void;
+  onClearSelection: () => void;
   onDeleteLane: () => void;
   onMoveLane: (direction: -1 | 1) => void;
   project: Project;
@@ -30,7 +39,7 @@ type Props = {
   selectedCue?: string;
   selectedCueIds: string[];
   locked: boolean;
-  onSelect: (id: string, additive?: boolean) => void;
+  onSelect: (id: string, additive?: boolean, seek?: boolean) => void;
   onSelectCue: (id: string, additive?: boolean) => void;
   onSeek: (us: number) => void;
   onCommand: (command: Command) => void;
@@ -58,10 +67,23 @@ export function Timeline(p: Props) {
     startX: number;
     delta: number;
   }>();
+  const videoDragging = useRef(false),
+    suppressClick = useRef(false);
   const rows = layout(p.project);
   const total = duration(p.project);
   const visibleSeconds = Math.max(16, seconds(Math.max(total, p.timeUs)) + 4);
   const width = Math.max(700, visibleSeconds * zoom);
+  useLayoutEffect(() => {
+    const el = scroll.current;
+    if (!el || videoDragging.current || trim) return;
+    const next = followPlayhead(
+      72 + seconds(p.timeUs) * zoom,
+      el.scrollLeft,
+      el.clientWidth,
+      el.scrollWidth,
+    );
+    if (next !== el.scrollLeft) el.scrollLeft = next;
+  }, [p.timeUs, zoom, viewport.width]);
   const selectedClip = p.project.clips.find((c) => c.id === p.selected);
   const selectedLaneRows = selectedClip
     ? rows
@@ -80,25 +102,13 @@ export function Timeline(p: Props) {
     if (!laneElement) return;
     const lane = Number(laneElement.dataset.lane);
     p.onLaneChange(lane);
-    const assetId = e.dataTransfer.getData(ASSET_DRAG),
-      clipId = e.dataTransfer.getData(CLIP_DRAG);
-    let timeUs =
-      toUs(position(e) / zoom) - Number(e.dataTransfer.getData('application/x-clip-offset') || 0);
-    timeUs = Math.max(0, timeUs);
-    const length = clipId
-      ? rows.find((r) => r.clip.id === clipId)?.clip
-      : p.project.assets.find((a) => a.id === assetId);
-    const span =
-      length && 'outUs' in length
-        ? length.outUs - length.inUs
-        : length && 'durationUs' in length
-          ? length.durationUs
-          : 0;
+    const assetId = e.dataTransfer.getData(ASSET_DRAG);
+    if (!assetId) return;
+    let timeUs = toUs(position(e) / zoom);
+    const span = p.project.assets.find((a) => a.id === assetId)?.durationUs ?? 0;
     const edges = [
       0,
-      ...rows
-        .filter((r) => clipLane(r.clip) === lane && r.clip.id !== clipId)
-        .flatMap((r) => [r.startUs, r.endUs]),
+      ...rows.filter((r) => clipLane(r.clip) === lane).flatMap((r) => [r.startUs, r.endUs]),
       ...p.project.subtitles
         .filter((c) => cueLane(c) === lane)
         .flatMap((c) => [c.startUs, c.endUs]),
@@ -110,7 +120,6 @@ export function Timeline(p: Props) {
     if (candidates.length && Math.abs(candidates[0] - timeUs) <= toUs(8 / zoom))
       timeUs = candidates[0];
     if (assetId) p.onCommand({ type: 'insert', assetId, index: rows.length, lane, timeUs });
-    else if (clipId) p.onCommand({ type: 'placeBlock', id: clipId, lane, timeUs });
   };
   const seekPointer = (e: PointerEvent<HTMLDivElement>) => {
     if (p.locked || e.button !== 0) return;
@@ -268,22 +277,27 @@ export function Timeline(p: Props) {
       </PanelTitle>
       <div
         className="timeline-scroll"
-        onClick={e=>{
-          if(p.locked)return;
-          const target=e.target as HTMLElement;
-          if(!target.closest('.timeline-clip,.subtitle-block,button,input,.ruler'))p.onClearSelection();
+        onClickCapture={(e) => {
+          if (suppressClick.current) {
+            suppressClick.current = false;
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
+        onClick={(e) => {
+          if (p.locked) return;
+          const target = e.target as HTMLElement;
+          if (!target.closest('.timeline-clip,.subtitle-block,button,input,.ruler'))
+            p.onClearSelection();
         }}
         ref={scroll}
         onScroll={(e) =>
           setViewport({ left: e.currentTarget.scrollLeft, width: e.currentTarget.clientWidth })
         }
         onDragOver={(e) => {
-          if (
-            !p.locked &&
-            (e.dataTransfer.types.includes(ASSET_DRAG) || e.dataTransfer.types.includes(CLIP_DRAG))
-          ) {
+          if (!p.locked && e.dataTransfer.types.includes(ASSET_DRAG)) {
             e.preventDefault();
-            e.dataTransfer.dropEffect = e.dataTransfer.types.includes(ASSET_DRAG) ? 'copy' : 'move';
+            e.dataTransfer.dropEffect = 'copy';
           }
         }}
         onDrop={onDrop}
@@ -322,99 +336,41 @@ export function Timeline(p: Props) {
               </button>
               <div className="track-bed" style={{ width }}>
                 {rows.map(({ clip, startUs, endUs }, index) => {
-                  const asset = p.project.assets.find((a) => a.id === clip.assetId)!;
                   if (clipLane(clip) !== lane) return null;
-                  const audioParts = (clip.parts ?? [clip]).filter(
-                    (part) => p.project.assets.find((a) => a.id === part.assetId)?.hasAudio,
-                  );
-                  const muted =
-                    audioParts.length > 0 &&
-                    (clip.muted ?? audioParts.every((part) => part.muted === true));
                   return (
-                    <div
+                    <VideoBlock
                       key={clip.id}
-                      className={`timeline-clip ${p.selectedIds.includes(clip.id) ? 'selected' : ''}`}
-                      style={{
-                        left: seconds(startUs) * zoom,
-                        width: Math.max(5, seconds(endUs - startUs) * zoom),
-                      }}
-                      draggable={!p.locked && !trim}
-                      role="button"
-                      tabIndex={p.locked ? -1 : 0}
-                      aria-label={`클립 ${index + 1}: ${asset.name}`}
-                      aria-pressed={p.selectedIds.includes(clip.id)}
-                      onClick={(e) => p.onSelect(clip.id, e.ctrlKey || e.metaKey)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.stopPropagation();
-                          p.onSelect(clip.id);
-                          p.onSeek(startUs);
+                      project={p.project}
+                      clip={clip}
+                      startUs={startUs}
+                      endUs={endUs}
+                      index={index}
+                      zoom={zoom}
+                      locked={p.locked}
+                      selectedIds={p.selectedIds}
+                      selectedCueIds={p.selectedCueIds}
+                      onSelect={p.onSelect}
+                      onSeek={p.onSeek}
+                      onLaneChange={p.onLaneChange}
+                      onCommand={p.onCommand}
+                      onGestureChange={(active, moved) => {
+                        videoDragging.current = active;
+                        if (moved) {
+                          suppressClick.current = true;
+                          setTimeout(() => {
+                            suppressClick.current = false;
+                          }, 0);
                         }
                       }}
-                      onDragStart={(e) => {
-                        if (trim) {
-                          e.preventDefault();
-                          return;
-                        }
-                        e.dataTransfer.setData(CLIP_DRAG, clip.id);
-                        e.dataTransfer.setData(
-                          'application/x-clip-offset',
-                          String(
-                            toUs((e.clientX - e.currentTarget.getBoundingClientRect().left) / zoom),
-                          ),
-                        );
-                        e.dataTransfer.effectAllowed = 'move';
-                        p.onSelect(clip.id);
-                      }}
-                    >
-                      <div className="clip-video">
-                        <span className="clip-number">{String(index + 1).padStart(2, '0')}</span>
-                        <strong>{asset.name}</strong>
-                        <small>{timecode(endUs - startUs, p.project.fps)}</small>
-                      </div>
-                      <div className={`clip-audio ${!audioParts.length || muted ? 'silent' : ''}`}>
-                        <span>
-                          {audioParts.length ? (muted ? '음소거됨' : '원본 오디오') : '무음 원본'}
-                        </span>
-                        <button
-                          className="clip-mute"
-                          aria-label={`클립 ${index + 1} ${muted ? '음소거 해제' : '음소거'}`}
-                          aria-pressed={muted}
-                          disabled={p.locked || !audioParts.length}
-                          draggable={false}
-                          title={
-                            p.selectedIds.includes(clip.id) && p.selectedIds.length > 1
-                              ? '선택 영상 전체에 적용'
-                              : muted
-                                ? '이 블록 음소거 해제'
-                                : '이 블록 음소거'
-                          }
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.code === 'Space') e.stopPropagation();
-                          }}
-                          onDragStart={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            p.onCommand({
-                              type: 'muteClips',
-                              ids: p.selectedIds.includes(clip.id)
-                                ? [...p.selectedIds, ...p.selectedCueIds]
-                                : [clip.id],
-                              muted: !muted,
-                            });
-                          }}
-                        >
-                          <TimelineIcon name={muted ? 'mute' : 'volume'} />
-                          <span>{muted ? '해제' : '음소거'}</span>
-                        </button>
-                      </div>
-                      {p.selectedIds.length < 2 && trimHandle(clip.id, 'in')}
-                      {p.selectedIds.length < 2 && trimHandle(clip.id, 'out')}
-                    </div>
+                      handles={
+                        p.selectedIds.length < 2 ? (
+                          <>
+                            {trimHandle(clip.id, 'in')}
+                            {trimHandle(clip.id, 'out')}
+                          </>
+                        ) : null
+                      }
+                    />
                   );
                 })}
                 {!rows.some((r) => clipLane(r.clip) === lane) &&

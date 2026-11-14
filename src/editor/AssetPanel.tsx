@@ -5,7 +5,6 @@ import type { MediaRegistry } from '../media/registry';
 import { PanelTitle } from './Panel';
 
 export const ASSET_DRAG = 'application/x-ssg-asset';
-export const CLIP_DRAG = 'application/x-ssg-clip';
 type Props = {
   project: Project;
   registry: MediaRegistry;

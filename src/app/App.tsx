@@ -228,7 +228,7 @@ export function App() {
       setSelected(undefined);
     }
   }
-  function selectClip(id: string, additive = false) {
+  function selectClip(id: string, additive = false, seek = true) {
     const target = project.clips.find((c) => c.id === id);
     if (target) setActiveLane(clipLane(target));
     playback.pause();
@@ -240,7 +240,7 @@ export function App() {
     setSelectedIds(ids);
     setSelected(ids.at(-1));
     const row = layout(project).find((c) => c.clip.id === id);
-    if (row) playback.seek(row.startUs);
+    if (row && seek) playback.seek(row.startUs);
     if (!additive) {
       setSelectedCue(undefined);
       setSelectedCueIds([]);
@@ -517,7 +517,12 @@ export function App() {
           if (lockedRef.current) return;
           playback.pause();
           void installation.requestInstall().then((result) => {
-            if (result.status === 'accepted' || result.status === 'installed'||result.status==='pending') return;
+            if (
+              result.status === 'accepted' ||
+              result.status === 'installed' ||
+              result.status === 'pending'
+            )
+              return;
             setInstallResult(result);
             setModal('install');
           });

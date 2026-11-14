@@ -984,6 +984,17 @@ small {
   background: #554733;
   overflow: hidden;
   user-select: none;
+  touch-action: none;
+}
+.timeline-clip.dragging {
+  z-index: 4;
+  cursor: grabbing;
+  opacity: 0.88;
+}
+.timeline-clip.invalid {
+  border-color: #ff7979;
+  outline: 2px solid #ff7979;
+  outline-offset: -1px;
 }
 .timeline-clip.selected {
   outline: 2px solid var(--accent);
