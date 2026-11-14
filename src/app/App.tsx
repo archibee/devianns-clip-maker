@@ -3,6 +3,8 @@ import { usePwaInstall, type InstallResult } from '../pwa/usePwaInstall';
 import { InstallDialog } from '../pwa/InstallDialog';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { autoCutUnavailable } from '../../modules/speech-auto-cut/src/eligibility';
+import AutoCaptionDialog, { AutoCaptionBoundary } from '../../modules/auto-caption/src/AutoCaptionDialog';
+import { captionUnavailable } from '../../modules/auto-caption/src/plan';
 import { AutoCutBoundary, AutoCutPending } from '../../modules/speech-auto-cut/src/ModuleBoundary';
 import { AssetPanel } from '../editor/AssetPanel';
 import { ExportDialog } from '../editor/ExportDialog';
@@ -77,7 +79,7 @@ export function App() {
   const dismissMessage = useCallback(() => setMessage(undefined), []);
   const [notice, setNotice] = useState('영상 파일은 서버로 전송되지 않습니다.');
   const [modal, setModal] = useState<
-    'export' | 'help' | 'recover' | 'autoCut' | 'deleteLane' | 'install'|'newProject'|'deleteAsset'
+    'export' | 'help' | 'recover' | 'autoCut' | 'autoCaption' | 'deleteLane' | 'install'|'newProject'|'deleteAsset'
   >();
   const [newProjectRequest,setNewProjectRequest]=useState<Project>();
   const [newProjectSaved,setNewProjectSaved]=useState(false);
@@ -99,6 +101,7 @@ export function App() {
     exportState.status === 'running' ||
     importing ||
     modal === 'autoCut' ||
+    modal === 'autoCaption' ||
     modal === 'deleteLane' ||
     modal === 'newProject' || modal==='deleteAsset' ||
     installation.installing;
@@ -114,6 +117,11 @@ export function App() {
         ? autoCutUnavailable(project, registry, selectedCueIds.length ? [] : selectedIds)
         : '이 브라우저는 음성 분석을 지원하지 않습니다.',
     [supported, project, registry, registryVersion, selectedIds, selectedCueIds],
+  );
+  const captionLane = Math.min(activeLane, laneCount(project) - 1);
+  const autoCaptionReason = useMemo(
+    () => captionUnavailable(project, registry, captionLane),
+    [project, registry, registryVersion, captionLane],
   );
   function act(action: HistoryAction) {
     if (lockedRef.current) return false;
@@ -206,6 +214,26 @@ export function App() {
     setMessage(undefined);
     setModal(undefined);
     setNotice('Auto Cut 적용 완료 · 실행 취소로 원래 타임라인을 복구할 수 있습니다.');
+  }
+  function applyAutoCaption(expected: Project, result: Project) {
+    if (modal !== 'autoCaption' || historyRef.current.present !== expected || importing || exportState.status === 'running')
+      throw new Error('분석 중 프로젝트 상태가 변경됐습니다. 취소하고 다시 분석하세요.');
+    // Validate and construct the history entry before committing any state.
+    const validated = parseProject(JSON.stringify(result));
+    if (result !== expected) {
+      const next = historyReducer(historyRef.current, { type: 'command', command: {
+        type: 'replaceTimeline', laneCount: validated.laneCount,
+        clips: validated.clips, subtitles: validated.subtitles,
+      }});
+      playback.pause();
+      historyRef.current = next;
+      setHistory(next);
+      setActiveLane(laneCount(validated) - 1);
+      setSelected(undefined); setSelectedIds([]); setSelectedCue(undefined); setSelectedCueIds([]);
+      setInspectorTab('subtitle');
+    }
+    setModal(undefined); setMessage(undefined);
+    setNotice(result === expected ? '감지된 음성이 없어 자막을 생성하지 않았습니다.' : 'Auto Caption 적용 완료 · 새 라인에 빈 자막을 추가했습니다. 실행 취소로 복구할 수 있습니다.');
   }
   function split() {
     command({ type: 'split', timeUs: playState.timeUs });
@@ -686,6 +714,12 @@ export function App() {
           onLaneChange={setActiveLane}
           selectedCueIds={selectedCueIds}
           autoCutUnavailable={autoCutReason}
+          autoCaptionUnavailable={autoCaptionReason}
+          onAutoCaption={() => {
+            if (locked || captionUnavailable(project, registry, captionLane)) return;
+            playback.pause();
+            setModal('autoCaption');
+          }}
           onAutoCut={() => {
             if (
               !locked &&
@@ -730,6 +764,12 @@ export function App() {
           WEB CODECS <b>·</b> LOCAL FIRST
         </span>
       </footer>
+      {modal === 'autoCaption' && (
+        <AutoCaptionBoundary onCancel={() => setModal(undefined)}>
+          <AutoCaptionDialog project={project} lane={captionLane} registry={registry}
+            onCancel={() => setModal(undefined)} onApply={applyAutoCaption} />
+        </AutoCaptionBoundary>
+      )}
       {modal === 'autoCut' && (
         <AutoCutBoundary onCancel={() => setModal(undefined)}>
           <Suspense fallback={<AutoCutPending onCancel={() => setModal(undefined)} />}>

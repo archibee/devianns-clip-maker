@@ -53,7 +53,7 @@ self.onmessage = async (event: MessageEvent<Request>) => {
       const asset = job.project.assets.find((a) => a.id === row.clip.assetId);
       if (!asset) throw new Error('영상 원본 정보를 찾지 못했습니다.');
       if (!asset.hasAudio) {
-        keep.push({ startUs: row.startUs, endUs: row.endUs });
+        if (job.purpose !== 'caption') keep.push({ startUs: row.startUs, endUs: row.endUs });
         complete += length;
         warnings.add('오디오 없는 블록은 보존했습니다.');
         continue;
@@ -126,15 +126,20 @@ self.onmessage = async (event: MessageEvent<Request>) => {
       segmenter.finish(row.endUs);
       await reader.close();
       reader = undefined;
-      keep.push(
-        ...paddedKeep(segmenter.speech, row.startUs, row.endUs, job.options, job.project.fps),
-        ...protectedFrames,
-      );
+      if (job.purpose === 'caption') {
+        keep.push(...segmenter.speech);
+        if (protectedFrames.length) throw new Error('오디오 디코딩 공백이 있어 자막 시간을 확정할 수 없습니다. 원본을 확인하세요.');
+      } else {
+        keep.push(
+          ...paddedKeep(segmenter.speech, row.startUs, row.endUs, job.options, job.project.fps),
+          ...protectedFrames,
+        );
+      }
       if (keep.length > 100000)
         throw new Error('분석 구간이 너무 많습니다. 더 짧은 프로젝트로 나누어 분석하세요.');
       complete += length;
     }
-    if (!speechFrames) {
+    if (!speechFrames && job.purpose !== 'caption') {
       keep.length = 0;
       keep.push(...rows.map((r) => ({ startUs: r.startUs, endUs: r.endUs })));
       warnings.add(

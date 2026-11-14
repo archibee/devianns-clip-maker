@@ -1,0 +1,7 @@
+.auto-caption-dialog { width: 620px; display: flex; flex-direction: column; gap: 14px; }
+.auto-caption-dialog > header { margin-bottom: 0; }
+.auto-caption-progress { display: grid; gap: 8px; }
+.auto-caption-progress progress { width: 100%; accent-color: var(--accent); }
+.auto-caption-results { display: grid; gap: 6px; max-height: 220px; overflow: auto; padding: 10px; background: #191919; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.auto-caption-pages { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.auto-caption-dialog > a { color: var(--muted); }

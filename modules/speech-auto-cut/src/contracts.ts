@@ -95,6 +95,7 @@ export function optionsError(o: Options) {
 export type Analysis = { keep: Range[]; speechFrames: number; warnings: string[] };
 export type Progress = { stage: string; progress: number };
 export type Request = {
+  purpose?: 'caption';
   project: Project;
   options: Options;
   files: { id: string; file: File }[];

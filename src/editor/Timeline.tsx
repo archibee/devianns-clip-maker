@@ -48,6 +48,8 @@ type Props = {
   onDelete: () => void;
   onAutoCut: () => void;
   autoCutUnavailable?: string;
+  onAutoCaption: () => void;
+  autoCaptionUnavailable?: string;
 };
 export function Timeline(p: Props) {
   const scroll = useRef<HTMLDivElement>(null);
@@ -270,6 +272,12 @@ export function Timeline(p: Props) {
             >
               <TimelineIcon name="auto" />
               AUTO CUT
+            </button>
+            <button disabled={p.locked || !!p.autoCaptionUnavailable}
+              title={p.autoCaptionUnavailable ?? '선택 라인 음성 구간에 빈 자막 생성'}
+              onClick={p.onAutoCaption}>
+              <TimelineIcon name="auto" />
+              AUTO CAPTION
             </button>
           </div>
         </div>
