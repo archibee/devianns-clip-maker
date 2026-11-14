@@ -191,10 +191,18 @@ export async function runExport(
       ? {
           ...customProject,
           assets,
-          clips: customProject.clips.map((c, i) => ({
-            ...c,
-            assetId: assets[i % assets.length].id,
-          })),
+          clips: customProject.clips.map((c, i) => {
+            const remap = (id: string) =>
+              assets[customProject.assets.findIndex((a) => a.id === id)]?.id ??
+              assets[i % assets.length].id;
+            return {
+              ...c,
+              assetId: remap(c.assetId),
+              ...(c.parts
+                ? { parts: c.parts.map((part) => ({ ...part, assetId: remap(part.assetId) })) }
+                : {}),
+            };
+          }),
         }
       : {
           ...emptyProject(),
@@ -379,6 +387,38 @@ export async function capabilities() {
   codecs.aac = await canEncodeAudio('aac', { sampleRate: 48000, numberOfChannels: 2 });
   codecs.opus = await canEncodeAudio('opus', { sampleRate: 48000, numberOfChannels: 2 });
   return { userAgent: navigator.userAgent, codecs };
+}
+
+export async function silenceRms(bytes: number[], ranges: [number, number][]) {
+  const input = new Input({
+    source: new BlobSource(new Blob([new Uint8Array(bytes)])),
+    formats: ALL_FORMATS,
+  });
+  try {
+    const track = await input.getPrimaryAudioTrack();
+    if (!track) throw new Error('오디오 트랙 누락');
+    const sums = ranges.map(() => ({ sum: 0, count: 0 }));
+    for await (const sample of new AudioSampleSink(track).samples()) {
+      try {
+        const plane = new Float32Array(sample.numberOfFrames);
+        sample.copyTo(plane, { planeIndex: 0, format: 'f32-planar' });
+        for (let i = 0; i < plane.length; i++) {
+          const time = sample.timestamp + i / sample.sampleRate;
+          ranges.forEach(([start, end], j) => {
+            if (time >= start && time < end) {
+              sums[j].sum += plane[i] ** 2;
+              sums[j].count++;
+            }
+          });
+        }
+      } finally {
+        sample.close();
+      }
+    }
+    return sums.map((s) => (s.count ? Math.sqrt(s.sum / s.count) : -1));
+  } finally {
+    input.dispose();
+  }
 }
 
 export async function comparePreview(

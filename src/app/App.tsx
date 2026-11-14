@@ -80,6 +80,10 @@ export function App() {
     try {
       const next = historyReducer(historyRef.current, action);
       if (next === historyRef.current) return false;
+      if (action.type === 'load') {
+        cueClipboard.current = undefined;
+        pendingSeek.current = undefined;
+      }
       playback.pause();
       historyRef.current = next;
       setHistory(next);
@@ -250,7 +254,7 @@ export function App() {
     let active = true;
     void recover()
       .then((p) => {
-        if (active && p && (p.clips.length || p.assets.length)) {
+        if (active && p && (p.clips.length || p.assets.length || p.subtitles.length)) {
           setRecovery(p);
           setModal('recover');
         }

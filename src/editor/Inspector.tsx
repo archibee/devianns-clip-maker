@@ -1,5 +1,5 @@
 import { fontAccess, registerLocalFont, type LocalFontData } from '../render/local-fonts';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cueErrors, newId, seconds, toUs, type Cue, type Project } from '../project/model';
 import type { Command } from '../project/commands';
 import { PanelTitle } from './Panel';
@@ -108,6 +108,10 @@ export function Inspector(p: Props) {
   const clip = p.project.clips.find((c) => c.id === p.selected);
   const asset = p.project.assets.find((a) => a.id === clip?.assetId);
   const cue = p.project.subtitles.find((c) => c.id === p.selectedCue);
+  const activeCue = useRef(cue);
+  activeCue.current = cue;
+  const activeProject = useRef(p.project.id);
+  activeProject.current = p.project.id;
   const updateCue = (patch: Partial<Cue>) =>
     cue && p.onCommand({ type: 'cue', cue: { ...cue, ...patch } });
   const addCue = () => {
@@ -337,6 +341,7 @@ export function Inspector(p: Props) {
                   <label className="field">
                     크기 프리셋
                     <select
+                      aria-label="크기 프리셋"
                       value=""
                       disabled={p.locked}
                       onChange={(e) => {
@@ -357,6 +362,7 @@ export function Inspector(p: Props) {
                   <label className="field">
                     위치 프리셋
                     <select
+                      aria-label="위치 프리셋"
                       value=""
                       disabled={p.locked}
                       onChange={(e) => {
@@ -378,6 +384,7 @@ export function Inspector(p: Props) {
                 <label className="field">
                   색상 프리셋
                   <select
+                    aria-label="색상 프리셋"
                     value=""
                     disabled={p.locked}
                     onChange={(e) => {
@@ -401,6 +408,10 @@ export function Inspector(p: Props) {
                     onClick={() => {
                       void fontAccess()!()
                         .then((list) => {
+                          if (!list.length)
+                            throw new Error(
+                              '접근 가능한 로컬 폰트가 없습니다. 브라우저의 로컬 폰트 권한을 확인하거나 기본 폰트를 사용하세요.',
+                            );
                           setFonts(list.sort((a, b) => a.fullName.localeCompare(b.fullName)));
                           setFontError('');
                         })
@@ -413,6 +424,7 @@ export function Inspector(p: Props) {
                 <label className="field">
                   자막 폰트
                   <select
+                    aria-label="자막 폰트"
                     disabled={p.locked}
                     value={cue.font?.postscriptName ?? ''}
                     onChange={(e) => {
@@ -425,7 +437,19 @@ export function Inspector(p: Props) {
                       if (font)
                         void registerLocalFont(font)
                           .then(() => {
-                            updateCue({ font: { postscriptName: id, label: font.fullName } });
+                            if (
+                              !activeCue.current ||
+                              activeCue.current.id !== cue.id ||
+                              activeProject.current !== p.project.id
+                            )
+                              return;
+                            p.onCommand({
+                              type: 'cue',
+                              cue: {
+                                ...activeCue.current,
+                                font: { postscriptName: id, label: font.fullName },
+                              },
+                            });
                             setFontError('');
                           })
                           .catch((error) => setFontError(String(error)));

@@ -96,7 +96,7 @@ describe('자막 이동·트림·붙여넣기', () => {
       [-1, 2_000_000],
       [2_000_000, 3_500_000],
       [1, 1],
-      [5_000_000, 7_000_000],
+      [5_000_000, Number.MAX_SAFE_INTEGER + 1],
     ]) {
       expect(() => applyCommand(p, { type: 'cueRange', id: cue.id, startUs, endUs })).toThrow();
     }

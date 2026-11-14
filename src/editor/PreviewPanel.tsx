@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { duration, resolve, timecode, type Project, type Transform } from '../project/model';
+import {
+  duration,
+  layout,
+  resolve,
+  timecode,
+  type Project,
+  type Transform,
+} from '../project/model';
 import type { PlaybackService, PlaybackState } from '../playback/service';
 import { previewSize } from '../render/compositor';
 import { PreviewTransformOverlay, type PreviewTool } from './PreviewTransformOverlay';
@@ -32,6 +39,13 @@ export function PreviewPanel(p: Props) {
     p.playback.previewTransform();
   }, [p.selected, clip?.transform, p.playback]);
   useEffect(() => {
+    if (cropDraft.current) {
+      cropDraft.current = undefined;
+      setTool(undefined);
+      p.playback.previewTransform();
+    }
+  }, [p.state.timeUs, p.playback]);
+  useEffect(() => {
     if (canvas.current) p.playback.attach(canvas.current);
   }, [p.playback]);
   return (
@@ -45,6 +59,11 @@ export function PreviewPanel(p: Props) {
               aria-pressed={tool === mode}
               disabled={p.locked || !clip}
               onClick={() => {
+                p.playback.pause();
+                if (clip && current?.clip.id !== clip.id) {
+                  const row = layout(p.project).find((row) => row.clip.id === clip.id);
+                  if (row) p.onSeek(row.startUs);
+                }
                 const pending = cropDraft.current;
                 if (
                   tool === 'crop' &&
@@ -80,21 +99,26 @@ export function PreviewPanel(p: Props) {
             aria-label="편집 영상 미리보기"
             data-testid="preview-canvas"
           />
-          {tool && clip && asset && !p.locked && (
-            <PreviewTransformOverlay
-              key={clip.id + tool + JSON.stringify(clip.transform)}
-              mode={tool}
-              transform={clip.transform}
-              asset={asset}
-              width={size.width}
-              height={size.height}
-              onCommit={(t) => p.onTransform(clip.id, t)}
-              onCropDraft={(t) => {
-                cropDraft.current = { id: clip.id, original: clip.transform, transform: t };
-                p.playback.previewTransform(clip.id, t);
-              }}
-            />
-          )}
+          {tool &&
+            clip &&
+            asset &&
+            current?.clip.id === clip.id &&
+            !p.locked &&
+            !p.state.playing && (
+              <PreviewTransformOverlay
+                key={clip.id + tool + current.sourceKey + JSON.stringify(clip.transform)}
+                mode={tool}
+                transform={clip.transform}
+                asset={asset}
+                width={size.width}
+                height={size.height}
+                onCommit={(t) => p.onTransform(clip.id, t)}
+                onCropDraft={(t) => {
+                  cropDraft.current = { id: clip.id, original: clip.transform, transform: t };
+                  p.playback.previewTransform(clip.id, t);
+                }}
+              />
+            )}
           {!duration(p.project) && (
             <div className="preview-placeholder">
               <span>▷</span>

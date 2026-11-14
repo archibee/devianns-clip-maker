@@ -4,7 +4,7 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { ALL_FORMATS, BlobSource, Input } from 'mediabunny';
 import assert from 'node:assert/strict';
 
-const mounts = ['/', '/devianns-clip-maker/'];
+const mounts = ['/', '/devianns-clip-maker/', '/ssg-clip-maker/'];
 const server = await startStaticTestServer('dist', mounts);
 let browser;
 const report = {

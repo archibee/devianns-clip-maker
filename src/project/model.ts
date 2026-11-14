@@ -15,6 +15,7 @@ export type Asset = {
   audioCodec?: string;
 };
 export type Crop = { x: number; y: number; width: number; height: number };
+export const MIN_CROP_SIZE = 0.001;
 export type Transform = {
   fit: 'contain' | 'cover';
   scale: number;

@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type PointerEvent } from 'react';
 import { layout, duration, timecode, seconds, toUs, type Project } from '../project/model';
 import { trimAt, type Command } from '../project/commands';
 import { ASSET_DRAG, CLIP_DRAG } from './AssetPanel';
@@ -22,6 +22,16 @@ type Props = {
 };
 export function Timeline(p: Props) {
   const scroll = useRef<HTMLDivElement>(null);
+  const [viewport, setViewport] = useState({ left: 0, width: 1200 });
+  useEffect(() => {
+    const el = scroll.current;
+    if (!el) return;
+    const update = () => setViewport({ left: el.scrollLeft, width: el.clientWidth });
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    update();
+    return () => observer.disconnect();
+  }, []);
   const [zoom, setZoom] = useState(52);
   const [dropIndex, setDropIndex] = useState<number>();
   const [trim, setTrim] = useState<{
@@ -98,9 +108,9 @@ export function Timeline(p: Props) {
   );
   const ticksStep = zoom < 30 ? 5 : zoom < 70 ? 2 : 1;
   const ticks = Array.from(
-    { length: Math.ceil(width / zoom / ticksStep) },
-    (_, i) => i * ticksStep,
-  );
+    { length: Math.ceil(viewport.width / zoom / ticksStep) + 2 },
+    (_, i) => (Math.max(0, Math.floor((viewport.left - 72) / zoom / ticksStep)) + i) * ticksStep,
+  ).filter((t) => t * zoom <= width);
   const dropX =
     dropIndex === undefined
       ? 0
@@ -160,6 +170,9 @@ export function Timeline(p: Props) {
       <div
         className="timeline-scroll"
         ref={scroll}
+        onScroll={(e) =>
+          setViewport({ left: e.currentTarget.scrollLeft, width: e.currentTarget.clientWidth })
+        }
         onDragOver={(e) => {
           if (
             !p.locked &&
@@ -187,7 +200,7 @@ export function Timeline(p: Props) {
           >
             {ticks.map((t) => (
               <span key={t} style={{ left: t * zoom }}>
-                {timecode(toUs(t), p.project.fps).slice(0, 5)}
+                {timecode(toUs(t), p.project.fps).slice(0, -3)}
               </span>
             ))}
             <div className="playhead-grip" style={{ left: seconds(p.timeUs) * zoom }} />

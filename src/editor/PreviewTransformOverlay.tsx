@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import type { Asset, Transform } from '../project/model';
+import { MIN_CROP_SIZE, type Asset, type Transform } from '../project/model';
 import { imageRect } from '../render/compositor';
 
 export type PreviewTool = 'crop' | 'move' | 'resize';
@@ -31,8 +31,13 @@ export function PreviewTransformOverlay(p: {
   );
   const outline =
     p.mode === 'crop' && cropPreview
-      ? imageRect(p.asset.width * cropPreview.crop!.width, p.asset.height * cropPreview.crop!.height,
-          p.width, p.height, cropPreview)
+      ? imageRect(
+          p.asset.width * cropPreview.crop!.width,
+          p.asset.height * cropPreview.crop!.height,
+          p.width,
+          p.height,
+          cropPreview,
+        )
       : rect;
   function updateCrop(box: Box) {
     setSelection(box);
@@ -105,16 +110,18 @@ export function PreviewTransformOverlay(p: {
           setDraft({ ...d.transform, scale: clamp(d.transform.scale * (1 + delta), 0.1, 5) });
         } else {
           const s = d.selection;
+          const minWidth = Math.min(1, Math.max(0.02, MIN_CROP_SIZE / crop.width));
+          const minHeight = Math.min(1, Math.max(0.02, MIN_CROP_SIZE / crop.height));
           let left = s.x,
             top = s.y,
             right = s.x + s.width,
             bottom = s.y + s.height;
-          if (d.handle.includes('w')) left = clamp(s.x + dx / rect.width, 0, right - 0.02);
+          if (d.handle.includes('w')) left = clamp(s.x + dx / rect.width, 0, right - minWidth);
           if (d.handle.includes('e'))
-            right = clamp(s.x + s.width + dx / rect.width, left + 0.02, 1);
-          if (d.handle.includes('n')) top = clamp(s.y + dy / rect.height, 0, bottom - 0.02);
+            right = clamp(s.x + s.width + dx / rect.width, left + minWidth, 1);
+          if (d.handle.includes('n')) top = clamp(s.y + dy / rect.height, 0, bottom - minHeight);
           if (d.handle.includes('s'))
-            bottom = clamp(s.y + s.height + dy / rect.height, top + 0.02, 1);
+            bottom = clamp(s.y + s.height + dy / rect.height, top + minHeight, 1);
           updateCrop({ x: left, y: top, width: right - left, height: bottom - top });
         }
       }}

@@ -84,7 +84,7 @@ describe('출력 설정과 프로젝트 검증', () => {
       parseProject(JSON.stringify({ ...p, clips: [{ ...p.clips[0], inUs: -1 }] })),
     ).toThrow();
   });
-  it('자막 겹침·범위 초과를 검출하고 편집 시 자동 삭제하지 않는다', () => {
+  it('자막이 영상 끝을 넘어도 유지하고 겹침은 검출한다', () => {
     const p = project();
     const cue = {
       id: 'q',
@@ -100,7 +100,8 @@ describe('출력 설정과 프로젝트 검증', () => {
     const withCue = applyCommand(p, { type: 'cue', cue });
     const shortened = applyCommand(withCue, { type: 'trim', id: 'c', inUs: 0, outUs: 1_000_000 });
     expect(shortened.subtitles).toHaveLength(1);
-    expect(cueErrors(shortened)).not.toHaveLength(0);
+    expect(cueErrors(shortened)).toEqual([]);
+    expect(duration(shortened)).toBe(3_000_000);
     expect(cueErrors({ ...withCue, subtitles: [cue, { ...cue, id: 'r' }] })).not.toHaveLength(0);
   });
 });

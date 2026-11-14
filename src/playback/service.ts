@@ -12,7 +12,7 @@ export type PlaybackState = {
 };
 export class PlaybackService {
   private project?: Project;
-  private transformDraft?: {id: string; transform: Transform};
+  private transformDraft?: { id: string; transform: Transform };
   private canvas?: HTMLCanvasElement;
   private worker?: Worker;
   private pending?: { project: Project; timeUs: number; generation: number };
@@ -101,9 +101,22 @@ export class PlaybackService {
       return;
     }
     const draft = this.transformDraft;
-    const project = draft ? {...this.project, clips:this.project.clips.map(c => c.id === draft.id
-      ? {...c, transform:draft.transform, ...(c.parts ? {parts:c.parts.map(part=>({...part,transform:draft.transform}))} : {})}
-      : c)} : this.project;
+    const project = draft
+      ? {
+          ...this.project,
+          clips: this.project.clips.map((c) =>
+            c.id === draft.id
+              ? {
+                  ...c,
+                  transform: draft.transform,
+                  ...(c.parts
+                    ? { parts: c.parts.map((part) => ({ ...part, transform: draft.transform })) }
+                    : {}),
+                }
+              : c,
+          ),
+        }
+      : this.project;
     this.pending = { project, timeUs, generation: this.generation };
     this.pumpFrame();
   }
@@ -123,14 +136,15 @@ export class PlaybackService {
   }
   seek(timeUs: number) {
     this.pause();
+    this.transformDraft = undefined;
     this.generation++;
     const end = Number.MAX_SAFE_INTEGER;
     this.notify({ timeUs: Math.round(Math.max(0, Math.min(end, timeUs))), error: undefined });
     this.requestFrame(this.state.timeUs);
   }
   previewTransform(id?: string, transform?: Transform) {
-    if (this.state.playing) this.pause();
-    this.transformDraft = id && transform ? {id,transform} : undefined;
+    if (this.state.playing && transform) this.pause();
+    this.transformDraft = id && transform ? { id, transform } : undefined;
     this.generation++;
     this.requestFrame(this.state.timeUs);
   }
@@ -144,6 +158,7 @@ export class PlaybackService {
       return;
     }
     if (this.state.timeUs >= duration(project)) this.seek(0);
+    this.transformDraft = undefined;
     const token = ++this.audioToken;
     const startUs = this.state.timeUs;
     const endUs = duration(project);

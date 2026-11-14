@@ -1,4 +1,4 @@
-import { duration, layout, type Project } from './model';
+import { duration, layout, cueErrors, MIN_CROP_SIZE, type Project } from './model';
 
 export function parseProject(text: string): Project {
   if (text.length > 2_000_000) throw new Error('프로젝트 JSON은 2MB 이하만 지원합니다.');
@@ -28,8 +28,8 @@ export function parseProject(text: string): Project {
         !object(c) ||
         !num(c.x, 0, 1) ||
         !num(c.y, 0, 1) ||
-        !num(c.width, 0.001, 1) ||
-        !num(c.height, 0.001, 1) ||
+        !num(c.width, MIN_CROP_SIZE - 1e-12, 1) ||
+        !num(c.height, MIN_CROP_SIZE - 1e-12, 1) ||
         Number(c.x) + Number(c.width) > 1.000001 ||
         Number(c.y) + Number(c.height) > 1.000001
       )
@@ -134,6 +134,7 @@ export function parseProject(text: string): Project {
     )
       return fail();
   const result = p as Project;
+  if (cueErrors(result).length) return fail();
   if (!Number.isSafeInteger(duration(result))) return fail();
   const rows = layout(result).sort((a, b) => a.startUs - b.startUs);
   if (rows.some((c, i) => i > 0 && c.startUs < rows[i - 1].endUs)) return fail();

@@ -26,7 +26,9 @@ export function ExportDialog(p: Props) {
   const bytes = estimateBytes(p.project, settings);
   const size = dimensions(p.project.aspect, settings.resolution);
   const issues = cueErrors(p.project);
-  const missing = p.project.clips.some((c) => !p.registry.has(c.assetId));
+  const missing = p.project.clips.some((c) =>
+    (c.parts ?? [c]).some((part) => !p.registry.has(part.assetId)),
+  );
   useEffect(() => {
     let active = true;
     setSupport(undefined);

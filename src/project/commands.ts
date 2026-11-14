@@ -37,15 +37,22 @@ export function applyCommand(p: Project, cmd: Command): Project {
     case 'insert': {
       const asset = p.assets.find((a) => a.id === cmd.assetId);
       if (!asset) throw new Error('에셋을 찾을 수 없습니다.');
-      const clips = [...p.clips];
-      clips.splice(Math.max(0, Math.min(clips.length, cmd.index)), 0, {
+      const rows = layout(p);
+      const index = Math.max(0, Math.min(rows.length, cmd.index));
+      const startUs = rows[index]?.startUs ?? rows.at(-1)?.endUs ?? 0;
+      const clips = rows.map((row, i) => ({
+        ...row.clip,
+        startUs: row.startUs + (i >= index ? asset.durationUs : 0),
+      }));
+      clips.splice(index, 0, {
         id: newId(),
         assetId: asset.id,
         inUs: 0,
         outUs: asset.durationUs,
         transform: defaultTransform(),
+        startUs,
       });
-      result = { ...p, clips: pack(clips) };
+      result = { ...p, clips };
       break;
     }
     case 'split': {
@@ -80,12 +87,28 @@ export function applyCommand(p: Project, cmd: Command): Project {
       break;
     }
     case 'delete':
-      result = { ...p, clips: p.clips.filter((c) => c.id !== cmd.id) };
+      result = {
+        ...p,
+        clips: layout(p)
+          .filter((row) => row.clip.id !== cmd.id)
+          .map((row) => ({ ...row.clip, startUs: row.startUs })),
+      };
       break;
     case 'deleteClips':
-      result = { ...p, clips: p.clips.filter((c) => !cmd.ids.includes(c.id)) };
+      result = {
+        ...p,
+        clips: layout(p)
+          .filter((row) => !cmd.ids.includes(row.clip.id))
+          .map((row) => ({ ...row.clip, startUs: row.startUs })),
+      };
       break;
     case 'pasteClips': {
+      if (
+        cmd.clips.some((c) =>
+          (c.parts ?? [c]).some((part) => !p.assets.some((a) => a.id === part.assetId)),
+        )
+      )
+        throw new Error('복사한 영상의 원본이 현재 프로젝트에 없습니다. 영상을 다시 복사하세요.');
       if (!Number.isSafeInteger(cmd.timeUs) || cmd.timeUs < 0)
         throw new Error('붙여넣기 위치가 올바르지 않습니다.');
       let cursor = cmd.timeUs;
@@ -104,6 +127,12 @@ export function applyCommand(p: Project, cmd: Command): Project {
     case 'merge': {
       const selected = p.clips.filter((c) => cmd.ids.includes(c.id));
       if (selected.length < 2) return p;
+      const rows = layout(p);
+      const selectedRows = rows.filter((row) => cmd.ids.includes(row.clip.id));
+      if (selectedRows.some((row, i) => i > 0 && row.startUs !== selectedRows[i - 1].endUs))
+        throw new Error(
+          '서로 맞닿은 영상 블록을 선택해 합치세요. 빈 구간이나 다른 영상은 이동하지 않습니다.',
+        );
       const parts = mediaLayout(p)
         .filter((c) => cmd.ids.includes(c.clip.id))
         .map((c) => ({
@@ -120,11 +149,14 @@ export function applyCommand(p: Project, cmd: Command): Project {
         outUs: length,
         transform: structuredClone(parts[0].transform),
         parts,
+        startUs: selectedRows[0].startUs,
       };
       const index = p.clips.findIndex((c) => cmd.ids.includes(c.id));
-      const clips = p.clips.filter((c) => !cmd.ids.includes(c.id));
+      const clips: Clip[] = rows
+        .filter((row) => !cmd.ids.includes(row.clip.id))
+        .map((row) => ({ ...row.clip, startUs: row.startUs }));
       clips.splice(index, 0, merged);
-      result = { ...p, clips: pack(clips) };
+      result = { ...p, clips };
       break;
     }
     case 'trim': {
@@ -159,7 +191,17 @@ export function applyCommand(p: Project, cmd: Command): Project {
       if (!clip) return p;
       const clips = p.clips.filter((c) => c.id !== cmd.id);
       clips.splice(Math.max(0, Math.min(clips.length, cmd.index)), 0, clip);
-      result = { ...p, clips: pack(clips) };
+      const rows = layout(p);
+      let cursor = rows[0]?.startUs ?? 0;
+      result = {
+        ...p,
+        clips: clips.map((c, i) => {
+          if (i) cursor += rows[i].startUs - rows[i - 1].endUs;
+          const next = { ...c, startUs: cursor };
+          cursor += clipDuration(c);
+          return next;
+        }),
+      };
       break;
     }
     case 'transform':
@@ -202,15 +244,6 @@ export function applyCommand(p: Project, cmd: Command): Project {
   }
   if (!Number.isSafeInteger(duration(result))) throw new Error('타임라인 시간이 너무 큽니다.');
   return result;
-}
-
-function pack(clips: Clip[]) {
-  let cursor = 0;
-  return clips.map((c) => {
-    const next = { ...c, startUs: cursor };
-    cursor += clipDuration(c);
-    return next;
-  });
 }
 
 export type History = { present: Project; past: Project[]; future: Project[] };
