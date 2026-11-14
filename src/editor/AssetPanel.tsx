@@ -89,7 +89,11 @@ export function AssetPanel(p: Props) {
                 </small>
               </div>
               {!entry ? (
-                <button disabled={p.locked} onClick={() => p.onReconnect(asset)}>
+                <button
+                  className="reconnect-asset"
+                  disabled={p.locked}
+                  onClick={() => p.onReconnect(asset)}
+                >
                   원본 다시 연결
                 </button>
               ) : (
