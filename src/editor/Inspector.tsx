@@ -596,6 +596,28 @@ export function Inspector(p: Props) {
           </>
         )}
       </div>
+      {tab === 'subtitle' && cue && !p.locked && (
+        <div className="cue-quick-editor">
+          <label>
+            <span className="cue-quick-heading">
+              선택 자막 바로 편집{' '}
+              <small>
+                {seconds(cue.startUs).toFixed(2)}–{seconds(cue.endUs).toFixed(2)}s
+              </small>
+            </span>
+            <textarea
+              key={cue.id}
+              aria-label="선택 자막 빠른 편집"
+              data-cue-id={cue.id}
+              value={cue.text}
+              maxLength={2000}
+              rows={2}
+              placeholder="선택한 자막 내용을 입력하세요"
+              onChange={(event) => updateCue({ text: event.target.value })}
+            />
+          </label>
+        </div>
+      )}
     </section>
   );
 }
