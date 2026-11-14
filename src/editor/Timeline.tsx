@@ -19,6 +19,7 @@ import { TimelineIcon } from './TimelineIcon';
 type Props = {
   activeLane: number;
   onLaneChange: (lane: number) => void;
+  onClearSelection:()=>void;
   onDeleteLane: () => void;
   onMoveLane: (direction: -1 | 1) => void;
   project: Project;
@@ -267,6 +268,11 @@ export function Timeline(p: Props) {
       </PanelTitle>
       <div
         className="timeline-scroll"
+        onClick={e=>{
+          if(p.locked)return;
+          const target=e.target as HTMLElement;
+          if(!target.closest('.timeline-clip,.subtitle-block,button,input,.ruler'))p.onClearSelection();
+        }}
         ref={scroll}
         onScroll={(e) =>
           setViewport({ left: e.currentTarget.scrollLeft, width: e.currentTarget.clientWidth })

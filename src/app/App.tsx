@@ -618,6 +618,7 @@ export function App() {
           onSeek={(us) => playback.seek(us)}
         />
         <Timeline
+          onClearSelection={()=>{setSelected(undefined);setSelectedIds([]);setSelectedCue(undefined);setSelectedCueIds([]);}}
           onMoveLane={moveLane}
           onDeleteLane={deleteLane}
           activeLane={Math.min(activeLane, laneCount(project) - 1)}
