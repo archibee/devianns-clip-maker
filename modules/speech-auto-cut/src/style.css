@@ -1,21 +1,99 @@
 .auto-cut-dialog {
   width: 1060px;
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .auto-cut-dialog > header {
   margin-bottom: 14px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 6px 14px;
 }
 .auto-cut-dialog > header h2 {
   font-size: 16px;
+}
+.auto-cut-dialog > header p {
+  color: #aaa;
+  font-size: 10px;
+}
+.auto-cut-presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  flex-shrink: 0;
+}
+.auto-cut-preset-card {
+  padding: 12px 14px;
+  border: 1px solid #535353;
+  border-radius: 9px;
+  background: #202020;
+  min-width: 0;
+}
+.auto-cut-preset-card:focus-within {
+  border-color: var(--accent);
+}
+.auto-cut-preset-card .field {
+  gap: 7px;
+  margin-bottom: 7px;
+}
+.auto-cut-preset-card .field > span {
+  color: #e5e5e5;
+  font-size: 11px;
+  font-weight: 650;
+}
+.auto-cut-preset-card select {
+  min-height: 34px;
+}
+.auto-cut-preset-card p {
+  min-height: 34px;
+  font-size: 10px;
+  color: #bdbdbd;
+  line-height: 1.6;
+}
+.auto-cut-preset-note {
+  color: #ababab;
+  font-size: 10px;
+  margin: 8px 0 12px;
+  flex-shrink: 0;
 }
 .auto-cut-body {
   display: grid;
   grid-template-columns: 290px minmax(0, 1fr);
   gap: 20px;
+  min-height: 0;
+  overflow: auto;
+  flex: 1;
+  padding-right: 4px;
 }
 .auto-cut-settings {
   border-right: 1px solid var(--line);
   padding-right: 18px;
+}
+.auto-cut-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.auto-cut-section-title small {
+  font-size: 9px;
+  font-weight: 400;
+  color: #aaa;
+}
+.auto-cut-control-group {
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px solid #4d4d4d;
+  border-radius: 8px;
+  min-width: 0;
+}
+.auto-cut-control-group legend {
+  padding: 0 5px;
+  color: #d8d8d8;
+  font-size: 10px;
 }
 .auto-cut-settings > p {
   color: #c2c2c2;
@@ -25,7 +103,18 @@
 .auto-cut-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 10px;
+  gap: 10px;
+}
+.auto-cut-fields .field {
+  margin: 0;
+  justify-content: flex-end;
+}
+.auto-cut-fields .field:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.auto-cut-fields input {
+  min-height: 30px;
+  font-variant-numeric: tabular-nums;
 }
 .auto-cut-fields small {
   font-size: 9px;
@@ -63,23 +152,49 @@
   padding: 8px;
   margin: 8px 0;
   white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 .auto-cut-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 15px;
-  border: 1px solid var(--line);
-  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
   margin: 10px 0;
+}
+.auto-cut-summary > span {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: #202020;
+  border: 1px solid #505050;
+  padding: 10px;
+  border-radius: 7px;
+}
+.auto-cut-summary small {
+  font-size: 9px;
+  color: #aaa;
+}
+.auto-cut-summary strong {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 .auto-cut-preview-mode {
   display: flex;
-  gap: 6px;
+  gap: 3px;
   margin: 10px 0;
+  padding: 3px;
+  background: #1e1e1e;
+  border: 1px solid #505050;
+  border-radius: 7px;
+}
+.auto-cut-preview-mode button {
+  flex: 1;
+  background: transparent;
+  border-color: transparent;
 }
 .auto-cut-preview-mode [aria-pressed='true'] {
   border-color: var(--accent);
   color: var(--accent);
+  background: #38352d;
 }
 .auto-cut-preview canvas {
   display: block;
@@ -114,12 +229,17 @@
   margin-bottom: 8px;
 }
 .auto-cut-candidate {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 5px 0;
   border-bottom: 1px solid #444;
+}
+.auto-cut-candidate > span {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .auto-cut-candidate label,
 .auto-cut-subtitle {
@@ -143,6 +263,7 @@
   margin: 12px 0;
   color: #efd39e;
   line-height: 1.7;
+  flex-wrap: wrap;
 }
 .auto-cut-review > a {
   display: inline-block;
@@ -151,14 +272,28 @@
   color: #c8c8c8;
 }
 .auto-cut-dialog > .dialog-footer {
-  position: sticky;
-  bottom: -20px;
+  flex-shrink: 0;
+  margin-top: 12px;
+  border-top: 1px solid #555;
   background: #282828;
   padding-top: 12px;
   padding-bottom: 6px;
   z-index: 1;
 }
 @media (max-width: 760px) {
+  .auto-cut-presets {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .auto-cut-preset-card {
+    padding: 9px 12px;
+  }
+  .auto-cut-preset-card p {
+    min-height: 0;
+  }
+  .auto-cut-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .auto-cut-body {
     grid-template-columns: 1fr;
   }

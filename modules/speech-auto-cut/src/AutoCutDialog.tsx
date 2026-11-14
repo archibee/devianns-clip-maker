@@ -47,6 +47,7 @@ export default function AutoCutDialog(p: Props) {
   });
   const [error, setError] = useState<string>();
   const [dropSubtitles, setDropSubtitles] = useState(false);
+  const [generateSubtitles, setGenerateSubtitles] = useState(false);
   const [previewMode, setPreviewMode] = useState<'original' | 'result'>('original');
   const [seekUs, setSeekUs] = useState(0);
   const [page, setPage] = useState(0);
@@ -69,11 +70,11 @@ export default function AutoCutDialog(p: Props) {
   const candidate = useMemo(() => {
     if (!analysis) return { project: undefined, error: undefined };
     try {
-      return { project: buildProject(snapshot, keep, true), error: undefined };
+      return { project: buildProject(snapshot, keep, true, generateSubtitles), error: undefined };
     } catch (error) {
       return { project: undefined, error: error instanceof Error ? error.message : String(error) };
     }
-  }, [snapshot, analysis, keep]);
+  }, [snapshot, analysis, keep, generateSubtitles]);
   useEffect(() => {
     section.current?.focus();
     return () => {
@@ -144,13 +145,41 @@ export default function AutoCutDialog(p: Props) {
     setProgress({ stage: '최종 컷 검증 및 타임라인 적용 중', progress: 0.98 });
     await new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
     try {
-      const result = buildProject(snapshot, keep, dropSubtitles);
+      const result = buildProject(snapshot, keep, dropSubtitles, generateSubtitles);
       p.onApply(snapshot, result);
     } catch (error) {
       setStatus('ready');
       setError(error instanceof Error ? error.message : String(error));
       setProgress({ stage: '적용 실패 · 기존 타임라인은 유지됩니다.', progress: 1 });
     }
+  }
+  function renderField(field: (typeof fields)[number]) {
+    return (
+      <label className="field" key={field.key}>
+        {field.label}
+        <input
+          type="number"
+          aria-label={field.label}
+          min={field.min}
+          max={field.max}
+          step={field.step}
+          value={Number.isFinite(options[field.key]) ? options[field.key] : ''}
+          disabled={busy}
+          onChange={(event) => {
+            if (MARGIN_FIELDS.includes(field.key)) setMarginPreset('custom');
+            else setPreset('custom');
+            update({
+              ...options,
+              [field.key]: event.target.value === '' ? NaN : Number(event.target.value),
+            });
+          }}
+        />
+        <small>
+          {field.min}–{field.max}
+          {field.key === 'negative' ? ' · 시작 확률 미만' : ''}
+        </small>
+      </label>
+    );
   }
   return (
     <div className="modal-backdrop auto-cut-backdrop">
@@ -195,11 +224,12 @@ export default function AutoCutDialog(p: Props) {
       >
         <header>
           <h2 id="auto-cut-title">Auto Cut · 음성 기반 자동 컷편집</h2>
+          <p>프리셋 선택 → 분석 → 결과 확인 → 완료</p>
         </header>
-        <div className="auto-cut-body">
-          <div className="auto-cut-settings">
+        <div className="auto-cut-presets">
+          <div className="auto-cut-preset-card">
             <label className="field">
-              음성 보존 강도
+              <span>01 · 음성 보존 강도</span>
               <select
                 aria-label="음성 보존 강도"
                 disabled={busy}
@@ -220,10 +250,10 @@ export default function AutoCutDialog(p: Props) {
               </select>
             </label>
             <p>{PRESETS[preset]?.description ?? '음성 판정 값을 직접 조절한 설정입니다.'}</p>
-            <p>음성 보존 강도가 높을수록 약한 음성도 더 남깁니다. 앞뒤 여백은 별도로 설정합니다.</p>
-            <p>확률은 0–1의 판정 기준입니다. 0.40은 40%이며, 실제 인식 정확도를 뜻하지 않습니다.</p>
+          </div>
+          <div className="auto-cut-preset-card">
             <label className="field">
-              편집 여백
+              <span>02 · 편집 여백</span>
               <select
                 aria-label="편집 여백"
                 disabled={busy}
@@ -246,36 +276,30 @@ export default function AutoCutDialog(p: Props) {
             <p>
               {MARGIN_PRESETS[marginPreset]?.description ??
                 '앞뒤 여백과 최소 삭제 길이를 직접 조절한 설정입니다.'}{' '}
-              여백은 빈 화면을 넣는 것이 아니라 원본 영상과 소리를 남기는 길이입니다.
             </p>
-            <div className="auto-cut-fields">
-              {fields.map((field) => (
-                <label className="field" key={field.key}>
-                  {field.label}
-                  <input
-                    type="number"
-                    aria-label={field.label}
-                    min={field.min}
-                    max={field.max}
-                    step={field.step}
-                    value={Number.isFinite(options[field.key]) ? options[field.key] : ''}
-                    disabled={busy}
-                    onChange={(event) => {
-                      if (MARGIN_FIELDS.includes(field.key)) setMarginPreset('custom');
-                      else setPreset('custom');
-                      update({
-                        ...options,
-                        [field.key]: event.target.value === '' ? NaN : Number(event.target.value),
-                      });
-                    }}
-                  />
-                  <small>
-                    {field.min}–{field.max}
-                    {field.key === 'negative' ? ' · 시작 확률보다 작게' : ''}
-                  </small>
-                </label>
-              ))}
-            </div>
+          </div>
+        </div>
+        <p className="auto-cut-preset-note">
+          강도가 높을수록 약한 음성을 더 보존합니다. 확률은 정확도 수치가 아니며, 여백은 빈 화면
+          삽입이 아닌 원본 영상·소리의 보존 길이입니다.
+        </p>
+        <div className="auto-cut-body">
+          <div className="auto-cut-settings">
+            <h3 className="auto-cut-section-title">
+              상세 설정 <small>직접 숫자 입력</small>
+            </h3>
+            <fieldset className="auto-cut-control-group">
+              <legend>음성 판정</legend>
+              <div className="auto-cut-fields">
+                {fields.filter((f) => !MARGIN_FIELDS.includes(f.key)).map(renderField)}
+              </div>
+            </fieldset>
+            <fieldset className="auto-cut-control-group">
+              <legend>컷 편집 여백</legend>
+              <div className="auto-cut-fields">
+                {fields.filter((f) => MARGIN_FIELDS.includes(f.key)).map(renderField)}
+              </div>
+            </fieldset>
             {options.minSpeechMs > 0 && (
               <p className="auto-cut-warning">
                 최소 음성 길이 필터는 짧은 응답을 제거할 수 있습니다.
@@ -327,12 +351,24 @@ export default function AutoCutDialog(p: Props) {
             )}
             {analysis && (
               <div className="auto-cut-summary">
-                <span>원래 {seconds(duration(snapshot)).toFixed(2)}초</span>
                 <span>
-                  결과 {seconds(candidate.project ? duration(candidate.project) : 0).toFixed(2)}초
+                  <small>원본 길이</small>
+                  <strong>{seconds(duration(snapshot)).toFixed(2)}초</strong>
                 </span>
-                <span>{candidate.project?.clips.length ?? 0}개 블록</span>
-                <span>삭제 후보 {removed.length - retained.length}개</span>
+                <span>
+                  <small>결과 길이</small>
+                  <strong>
+                    {seconds(candidate.project ? duration(candidate.project) : 0).toFixed(2)}초
+                  </strong>
+                </span>
+                <span>
+                  <small>영상 블록</small>
+                  <strong>{candidate.project?.clips.length ?? 0}개</strong>
+                </span>
+                <span>
+                  <small>삭제 후보</small>
+                  <strong>{removed.length - retained.length}개</strong>
+                </span>
               </div>
             )}
             <div className="auto-cut-preview-mode">
@@ -418,6 +454,19 @@ export default function AutoCutDialog(p: Props) {
                 )}
               </div>
             )}
+            <label className="auto-cut-subtitle">
+              <input
+                type="checkbox"
+                aria-label="새 자막 자동 생성"
+                checked={generateSubtitles}
+                disabled={busy}
+                onChange={(event) => setGenerateSubtitles(event.target.checked)}
+              />
+              새 자막 자동 생성 · 영상 블록마다 같은 길이의 빈 자막을 추가합니다.
+              {generateSubtitles && candidate.project && (
+                <span>({candidate.project.subtitles.length}개)</span>
+              )}
+            </label>
             {snapshot.subtitles.length > 0 && (
               <label className="auto-cut-subtitle">
                 <input

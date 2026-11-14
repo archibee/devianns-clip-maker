@@ -33,7 +33,12 @@ export function removals(project: Project, keep: Range[]): Range[] {
   }
   return union(result);
 }
-export function buildProject(project: Project, keep: Range[], dropSubtitles: boolean): Project {
+export function buildProject(
+  project: Project,
+  keep: Range[],
+  dropSubtitles: boolean,
+  generateSubtitles = false,
+): Project {
   if (project.subtitles.length && !dropSubtitles)
     throw new Error(
       '기존 자막을 제외하는 데 동의해야 적용할 수 있습니다. 원래 자막은 실행 취소로 복구할 수 있습니다.',
@@ -61,7 +66,20 @@ export function buildProject(project: Project, keep: Range[], dropSubtitles: boo
         );
     }
   if (!clips.length) throw new Error('남길 영상이 없습니다. 후보를 보존하거나 다시 분석하세요.');
-  return parseProject(
-    JSON.stringify({ ...project, clips, subtitles: dropSubtitles ? [] : project.subtitles }),
-  );
+  const subtitles = generateSubtitles
+    ? clips.map((clip) => ({
+        id: newId(),
+        startUs: clip.startUs!,
+        endUs: clip.startUs! + clip.outUs - clip.inUs,
+        text: '',
+        size: 0.05,
+        color: '#ffffff',
+        background: '#000000',
+        x: 0.5,
+        y: 0.9,
+      }))
+    : dropSubtitles
+      ? []
+      : project.subtitles;
+  return parseProject(JSON.stringify({ ...project, clips, subtitles }));
 }
