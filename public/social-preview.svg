@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#151515"/>
+  <rect x="48" y="48" width="1104" height="534" rx="24" fill="#222222" stroke="#505050" stroke-width="2"/>
+  <rect x="88" y="91" width="6" height="108" rx="3" fill="#ffd078"/>
+  <g font-family="Arial, sans-serif">
+    <text x="120" y="133" font-size="31" fill="#c4c4c4" letter-spacing="3">LOCAL VIDEO EDITOR</text>
+    <text x="116" y="207" font-size="66" font-weight="700" fill="#ffffff">Devianns Clip Maker</text>
+    <text x="90" y="271" font-size="25" fill="#cecece">CUT EDITING   /   SUBTITLES   /   AUTO CUT   /   EXPORT</text>
+    <text x="90" y="534" font-size="23" fill="#bdbdbd">Your files. Your browser. Your edit.</text>
+  </g>
+  <rect x="88" y="320" width="1024" height="148" rx="12" fill="#171717" stroke="#454545"/>
+  <path d="M112 345h976 M112 395h976" stroke="#414141" stroke-width="2"/>
+  <g fill="#a78048">
+    <rect x="112" y="357" width="245" height="30" rx="5"/>
+    <rect x="365" y="357" width="135" height="30" rx="5"/>
+    <rect x="508" y="357" width="330" height="30" rx="5"/>
+    <rect x="846" y="357" width="242" height="30" rx="5"/>
+  </g>
+  <g fill="#787878">
+    <rect x="112" y="408" width="245" height="30" rx="5"/>
+    <rect x="365" y="408" width="135" height="30" rx="5"/>
+    <rect x="508" y="408" width="330" height="30" rx="5"/>
+  </g>
+  <path d="M624 330v122" stroke="#ffd078" stroke-width="3"/>
+  <path d="m617 330 7 9 7-9z" fill="#ffd078"/>
+</svg>
