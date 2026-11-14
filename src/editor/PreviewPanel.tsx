@@ -17,6 +17,9 @@ type Props = {
 };
 export function PreviewPanel(p: Props) {
   const [tool, setTool] = useState<PreviewTool>();
+  const cropDraft = useRef<{ id: string; original: Transform; transform: Transform } | undefined>(
+    undefined,
+  );
   const clip = p.project.clips.find((c) => c.id === p.selected);
   const current = resolve(p.project, p.state.timeUs);
   const asset = p.project.assets.find(
@@ -24,6 +27,9 @@ export function PreviewPanel(p: Props) {
   );
   const size = previewSize(p.project.aspect);
   const canvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    cropDraft.current = undefined;
+  }, [p.selected, clip?.transform]);
   useEffect(() => {
     if (canvas.current) p.playback.attach(canvas.current);
   }, [p.playback]);
@@ -37,9 +43,21 @@ export function PreviewPanel(p: Props) {
               className={tool === mode ? 'active' : ''}
               aria-pressed={tool === mode}
               disabled={p.locked || !clip}
-              onClick={() => setTool(tool === mode ? undefined : mode)}
+              onClick={() => {
+                const pending = cropDraft.current;
+                if (
+                  tool === 'crop' &&
+                  mode === 'crop' &&
+                  clip &&
+                  pending?.id === clip.id &&
+                  pending.original === clip.transform
+                )
+                  p.onTransform(clip.id, pending.transform);
+                cropDraft.current = undefined;
+                setTool(tool === mode ? undefined : mode);
+              }}
             >
-              {mode}
+              {mode[0].toUpperCase() + mode.slice(1)}
             </button>
           ))}
         </div>
@@ -59,20 +77,22 @@ export function PreviewPanel(p: Props) {
           />
           {tool && clip && asset && !p.locked && (
             <PreviewTransformOverlay
-              key={clip.id + tool}
+              key={clip.id + tool + JSON.stringify(clip.transform)}
               mode={tool}
               transform={clip.transform}
               asset={asset}
               width={size.width}
               height={size.height}
               onCommit={(t) => p.onTransform(clip.id, t)}
+              onCropDraft={(t) => {
+                cropDraft.current = { id: clip.id, original: clip.transform, transform: t };
+              }}
             />
           )}
           {!duration(p.project) && (
             <div className="preview-placeholder">
               <span>▷</span>
-              <strong>여기서 이야기가 시작됩니다</strong>
-              <small>미디어를 타임라인에 추가해 편집하세요</small>
+              <strong>미리보기</strong>
             </div>
           )}
         </div>

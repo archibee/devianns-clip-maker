@@ -20,7 +20,6 @@ export function Toolbar(p: Props) {
         <span className="brand-mark">▰</span>
         <span>
           Devianns <strong>Clip Maker</strong>
-          <small>LOCAL VIDEO STUDIO</small>
         </span>
       </div>
       <div className="project-name">

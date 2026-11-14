@@ -272,9 +272,7 @@ export function Timeline(p: Props) {
         </div>
       </div>
       <footer className="timeline-footer">
-        <span>
-          {rows.length} 클립 <span className="muted">· 빈틈 없이 연결</span>
-        </span>
+        <span>{rows.length} 클립</span>
         <label>
           재생 위치{' '}
           <input
@@ -288,11 +286,7 @@ export function Timeline(p: Props) {
             onChange={(e) => p.onSeek(Number(e.target.value))}
           />
         </label>
-        <span>
-          {trim
-            ? `트림 ${seconds(trim.delta).toFixed(2)}초`
-            : 'S 분할 · Space 재생 · ← → 프레임 이동'}
-        </span>
+        {trim && <span>트림 {seconds(trim.delta).toFixed(2)}초</span>}
       </footer>
     </section>
   );

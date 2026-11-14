@@ -23,6 +23,15 @@
 }
 body {
   margin: 0;
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+select,
+[contenteditable]:not([contenteditable='false']) {
+  -webkit-user-select: text;
+  user-select: text;
 }
 button,
 input,
@@ -144,11 +153,11 @@ small {
   overflow: hidden;
 }
 .toolbar {
-  min-height: 76px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   gap: 26px;
-  padding: 0 22px;
+  padding: 2px 22px;
   background: #14181e;
   border-bottom: 1px solid var(--line);
 }
@@ -161,7 +170,7 @@ small {
   letter-spacing: 1px;
 }
 .brand-mark {
-  height: 34px;
+  height: 28px;
   width: 34px;
   border-radius: 9px;
   background: var(--accent);
@@ -193,6 +202,8 @@ small {
   border-color: transparent;
   font-size: 13px;
   font-weight: 600;
+  padding-top: 3px;
+  padding-bottom: 3px;
 }
 .project-name input:hover {
   border-color: var(--line);
@@ -222,12 +233,17 @@ small {
   background: transparent;
   border-color: transparent;
 }
+.toolbar nav > button {
+  min-height: 26px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
 .toolbar nav > button:hover {
   background: #292f39;
 }
 .toolbar nav > button.primary {
   margin-left: 8px;
-  padding: 9px 18px;
+  padding: 3px 18px;
 }
 .divider {
   height: 20px;
@@ -255,8 +271,8 @@ small {
   flex-direction: column;
 }
 .panel-title {
-  height: 47px;
-  min-height: 47px;
+  height: 30px;
+  min-height: 30px;
   display: flex;
   align-items: center;
   padding: 0 14px;
@@ -303,7 +319,7 @@ small {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px 8px;
+  padding: 6px 14px;
   color: #a8b2c1;
   font-size: 10px;
 }
@@ -600,11 +616,13 @@ small {
 }
 .tab-bar {
   display: flex;
-  padding: 7px 12px 0;
+  padding: 0 12px;
   gap: 6px;
   border-bottom: 1px solid var(--line);
 }
 .tab-bar button {
+  min-height: 26px;
+  padding: 3px 11px;
   flex: 1;
   background: transparent;
   border: 0;
@@ -624,7 +642,7 @@ small {
   border-radius: 3px;
 }
 .inspector-body {
-  padding: 16px;
+  padding: 10px 12px;
   overflow: auto;
   flex: 1;
 }
@@ -632,22 +650,24 @@ small {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.3px;
-  margin-bottom: 13px;
+  margin-bottom: 8px;
   color: #c4cdd9;
 }
 .field {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 4px;
   color: #909caf;
   font-size: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 9px;
   min-width: 0;
 }
 .field input,
 .field select {
   font-size: 11px;
   width: 100%;
+  padding-top: 5px;
+  padding-bottom: 5px;
 }
 .field-pair {
   display: grid;
@@ -732,8 +752,8 @@ small {
   grid-row: 2;
 }
 .timeline-panel .panel-title {
-  height: 47px;
-  min-height: 47px;
+  height: 30px;
+  min-height: 30px;
 }
 .timeline-tools {
   display: flex;
@@ -1365,7 +1385,7 @@ small {
   .toolbar {
     flex-wrap: wrap;
     gap: 6px;
-    padding: 10px 12px;
+    padding: 3px 12px;
   }
   .brand {
     flex: 1;
@@ -1512,26 +1532,16 @@ small {
     gap: 5px;
   }
   .panel-title {
-    height: 40px;
-    min-height: 40px;
+    height: 30px;
+    min-height: 30px;
   }
 }
 /* Compact vertical workspace */
-.toolbar {
-  min-height: 50px;
-  padding-top: 5px;
-  padding-bottom: 5px;
-}
 .app-shell {
   min-height: 590px;
 }
 .workspace {
   grid-template-rows: minmax(280px, 1fr) 215px;
-}
-.panel-title,
-.timeline-panel .panel-title {
-  height: 34px;
-  min-height: 34px;
 }
 .preview-stage {
   padding-top: 8px;
@@ -1623,7 +1633,7 @@ small {
   cursor: move;
 }
 .tool-crop {
-  cursor: crosshair;
+  cursor: default;
 }
 .tool-resize {
   cursor: nwse-resize;
@@ -1644,23 +1654,47 @@ small {
 .resize-handle.nw {
   left: -5px;
   top: -5px;
+  cursor: nwse-resize;
 }
 .resize-handle.ne {
   right: -5px;
   top: -5px;
+  cursor: nesw-resize;
 }
 .resize-handle.sw {
   left: -5px;
   bottom: -5px;
+  cursor: nesw-resize;
 }
 .resize-handle.se {
   right: -5px;
   bottom: -5px;
+  cursor: nwse-resize;
+}
+.resize-handle.n {
+  left: calc(50% - 5px);
+  top: -5px;
+  cursor: ns-resize;
+}
+.resize-handle.s {
+  left: calc(50% - 5px);
+  bottom: -5px;
+  cursor: ns-resize;
+}
+.resize-handle.w {
+  left: -5px;
+  top: calc(50% - 5px);
+  cursor: ew-resize;
+}
+.resize-handle.e {
+  right: -5px;
+  top: calc(50% - 5px);
+  cursor: ew-resize;
 }
 .crop-selection {
   position: absolute;
   border: 2px solid #fff;
-  background: #ffffff22;
+  box-shadow: 0 0 0 2000px #0009;
   pointer-events: none;
 }
 @media (min-width: 1600px) {

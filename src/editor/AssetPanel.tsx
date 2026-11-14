@@ -132,7 +132,6 @@ export function AssetPanel(p: Props) {
             <span className="upload-symbol">↥</span>
             <strong>영상을 가져오세요</strong>
             <span>파일을 끌어놓거나 클릭해 선택</span>
-            <small>MP4 · MOV · WebM / 코덱 지원 확인</small>
           </button>
         )}
       </div>

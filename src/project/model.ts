@@ -32,6 +32,8 @@ export type Cue = {
   size: number;
   color: string;
   background: string;
+  colorOpacity?: number;
+  backgroundOpacity?: number;
   x: number;
   y: number;
   font?: { postscriptName: string; label: string };

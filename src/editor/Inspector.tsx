@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { cueErrors, newId, seconds, toUs, type Cue, type Project } from '../project/model';
 import type { Command } from '../project/commands';
 import { PanelTitle } from './Panel';
+import { subtitleSizes, subtitlePositions, subtitleStyles } from './subtitle-presets';
 
 export function NumberField({
   label,
@@ -12,6 +13,7 @@ export function NumberField({
   step = 0.001,
   onCommit,
   disabled,
+  slider = false,
 }: {
   label: string;
   value: number;
@@ -20,6 +22,7 @@ export function NumberField({
   step?: number;
   onCommit: (n: number) => void;
   disabled?: boolean;
+  slider?: boolean;
 }) {
   const [draft, setDraft] = useState(String(value));
   useEffect(() => setDraft(String(value)), [value]);
@@ -45,6 +48,43 @@ export function NumberField({
           if (e.key === 'Enter') e.currentTarget.blur();
         }}
       />
+      {slider && (
+        <input
+          type="range"
+          aria-label={`${label} 슬라이더`}
+          min={min}
+          max={max}
+          step={step}
+          value={Number.isFinite(Number(draft)) ? Number(draft) : value}
+          disabled={disabled}
+          onChange={(e) => setDraft(e.target.value)}
+          onPointerUp={(e) => {
+            const n = Number(e.currentTarget.value);
+            if (n !== value) onCommit(n);
+          }}
+          onKeyUp={(e) => {
+            if (
+              [
+                'ArrowLeft',
+                'ArrowRight',
+                'ArrowUp',
+                'ArrowDown',
+                'Home',
+                'End',
+                'PageUp',
+                'PageDown',
+              ].includes(e.key)
+            ) {
+              const n = Number(e.currentTarget.value);
+              if (n !== value) onCommit(n);
+            }
+          }}
+          onBlur={(e) => {
+            const n = Number(e.currentTarget.value);
+            if (n !== value) onCommit(n);
+          }}
+        />
+      )}
     </label>
   );
 }
@@ -177,7 +217,6 @@ export function Inspector(p: Props) {
                     }
                   />
                 </div>
-                <p className="hint">영상과 원본 소리가 함께 잘리고 이동합니다.</p>
                 <h3>프레임 배치</h3>
                 <label className="field">
                   맞춤
@@ -263,11 +302,7 @@ export function Inspector(p: Props) {
             ) : (
               <div className="inspector-empty">
                 <span>⌖</span>
-                <p>
-                  타임라인에서 클립을 선택하면
-                  <br />
-                  원본 구간과 배치를 조정할 수 있습니다.
-                </p>
+                <p>클립을 선택하세요</p>
               </div>
             )}
           </>
@@ -279,9 +314,6 @@ export function Inspector(p: Props) {
                 ＋ 추가
               </button>
             </div>
-            <p className="hint">
-              자막은 프로젝트 시간에 고정됩니다. 클립을 이동한 뒤 시간을 확인하세요.
-            </p>
             <div className="cue-list">
               {p.project.subtitles.map((c) => (
                 <button
@@ -301,6 +333,68 @@ export function Inspector(p: Props) {
             </div>
             {cue && (
               <div className="cue-editor">
+                <div className="field-pair">
+                  <label className="field">
+                    크기 프리셋
+                    <select
+                      value=""
+                      disabled={p.locked}
+                      onChange={(e) => {
+                        const preset = subtitleSizes[Number(e.target.value)];
+                        if (preset) updateCue({ size: preset.size });
+                      }}
+                    >
+                      <option value="" disabled>
+                        선택
+                      </option>
+                      {subtitleSizes.map((preset, i) => (
+                        <option key={preset.label} value={i}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    위치 프리셋
+                    <select
+                      value=""
+                      disabled={p.locked}
+                      onChange={(e) => {
+                        const preset = subtitlePositions[Number(e.target.value)];
+                        if (preset) updateCue({ x: preset.x, y: preset.y });
+                      }}
+                    >
+                      <option value="" disabled>
+                        선택
+                      </option>
+                      {subtitlePositions.map((preset, i) => (
+                        <option key={preset.label} value={i}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <label className="field">
+                  색상 프리셋
+                  <select
+                    value=""
+                    disabled={p.locked}
+                    onChange={(e) => {
+                      const preset = subtitleStyles[Number(e.target.value)];
+                      if (preset) updateCue(preset.patch);
+                    }}
+                  >
+                    <option value="" disabled>
+                      선택
+                    </option>
+                    {subtitleStyles.map((preset, i) => (
+                      <option key={preset.label} value={i}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 {fontAccess() && (
                   <button
                     disabled={p.locked}
@@ -384,6 +478,7 @@ export function Inspector(p: Props) {
                 </div>
                 <NumberField
                   label="글자 크기 (화면 높이 %)"
+                  slider
                   value={Math.round(cue.size * 100)}
                   min={1}
                   max={20}
@@ -415,20 +510,44 @@ export function Inspector(p: Props) {
                 </div>
                 <div className="field-pair">
                   <NumberField
+                    label="글자 불투명도 (%)"
+                    value={Math.round((cue.colorOpacity ?? 1) * 100)}
+                    min={0}
+                    max={100}
+                    step={1}
+                    slider
+                    disabled={p.locked}
+                    onCommit={(n) => updateCue({ colorOpacity: n / 100 })}
+                  />
+                  <NumberField
+                    label="배경 불투명도 (%)"
+                    value={Math.round((cue.backgroundOpacity ?? 0.7) * 100)}
+                    min={0}
+                    max={100}
+                    step={1}
+                    slider
+                    disabled={p.locked}
+                    onCommit={(n) => updateCue({ backgroundOpacity: n / 100 })}
+                  />
+                </div>
+                <div className="field-pair">
+                  <NumberField
                     label="자막 가로 위치"
+                    slider
                     value={cue.x}
                     min={0}
                     max={1}
-                    step={0.05}
+                    step={0.01}
                     disabled={p.locked}
                     onCommit={(x) => updateCue({ x })}
                   />
                   <NumberField
                     label="자막 세로 위치"
+                    slider
                     value={cue.y}
                     min={0}
                     max={1}
-                    step={0.05}
+                    step={0.01}
                     disabled={p.locked}
                     onCommit={(y) => updateCue({ y })}
                   />

@@ -120,6 +120,8 @@ export function parseProject(text: string): Project {
       !num(c.size, 0.01, 0.2) ||
       !color(c.color) ||
       !color(c.background) ||
+      (c.colorOpacity !== undefined && !num(c.colorOpacity, 0, 1)) ||
+      (c.backgroundOpacity !== undefined && !num(c.backgroundOpacity, 0, 1)) ||
       !num(c.x, 0, 1) ||
       !num(c.y, 0, 1)
     )

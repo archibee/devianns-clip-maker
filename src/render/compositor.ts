@@ -88,10 +88,10 @@ function renderCue(ctx: Context, cue: Cue, width: number, height: number) {
   lines.forEach((line, index) => {
     const y = top + lineHeight * (index + 0.5);
     const w = ctx.measureText(line).width;
-    ctx.globalAlpha = 0.7;
+    ctx.globalAlpha = cue.backgroundOpacity ?? 0.7;
     ctx.fillStyle = cue.background;
     ctx.fillRect(cx - w / 2 - fontSize * 0.3, y - lineHeight / 2, w + fontSize * 0.6, lineHeight);
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = cue.colorOpacity ?? 1;
     ctx.lineJoin = 'round';
     ctx.lineWidth = fontSize * 0.09;
     ctx.strokeStyle = '#000000';

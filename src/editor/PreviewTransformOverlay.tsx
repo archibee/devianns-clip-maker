@@ -3,6 +3,7 @@ import type { Asset, Transform } from '../project/model';
 import { imageRect } from '../render/compositor';
 
 export type PreviewTool = 'crop' | 'move' | 'resize';
+type Box = { x: number; y: number; width: number; height: number };
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 export function PreviewTransformOverlay(p: {
   mode: PreviewTool;
@@ -11,17 +12,13 @@ export function PreviewTransformOverlay(p: {
   width: number;
   height: number;
   onCommit: (t: Transform) => void;
+  onCropDraft: (t: Transform) => void;
 }) {
-  const drag = useRef<{ x: number; y: number; transform: Transform; handle: string } | undefined>(
-    undefined,
-  );
+  const drag = useRef<
+    { x: number; y: number; transform: Transform; handle: string; selection: Box } | undefined
+  >(undefined);
   const [draft, setDraft] = useState<Transform>();
-  const [selection, setSelection] = useState<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>();
+  const [selection, setSelection] = useState<Box>({ x: 0, y: 0, width: 1, height: 1 });
   const t = draft ?? p.transform;
   const crop = t.crop ?? { x: 0, y: 0, width: 1, height: 1 };
   const rect = imageRect(
@@ -31,15 +28,46 @@ export function PreviewTransformOverlay(p: {
     p.height,
     t,
   );
+  const outline =
+    p.mode === 'crop'
+      ? {
+          x: rect.x + selection.x * rect.width,
+          y: rect.y + selection.y * rect.height,
+          width: selection.width * rect.width,
+          height: selection.height * rect.height,
+        }
+      : rect;
+  function updateCrop(box: Box) {
+    setSelection(box);
+    const nextCrop = {
+      x: crop.x + box.x * crop.width,
+      y: crop.y + box.y * crop.height,
+      width: crop.width * box.width,
+      height: crop.height * box.height,
+    };
+    const fitted = imageRect(
+      p.asset.width * nextCrop.width,
+      p.asset.height * nextCrop.height,
+      p.width,
+      p.height,
+      { ...p.transform, scale: 1, x: 0, y: 0 },
+    );
+    p.onCropDraft({
+      ...p.transform,
+      crop: nextCrop,
+      scale: clamp((rect.width * box.width) / fitted.width, 0.1, 5),
+      x: clamp((rect.x + (box.x + box.width / 2) * rect.width - p.width / 2) / p.width, -1, 1),
+      y: clamp((rect.y + (box.y + box.height / 2) * rect.height - p.height / 2) / p.height, -1, 1),
+    });
+  }
   return (
     <div
       className={`transform-overlay tool-${p.mode}`}
       aria-label={`${p.mode} 영상 조정`}
-      onDoubleClick={() => {
-        if (p.mode === 'crop') p.onCommit({ ...p.transform, crop: undefined });
-      }}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
+        const handle = (e.target as HTMLElement).dataset.handle;
+        if (p.mode !== 'move' && !handle) return;
         e.preventDefault();
         e.currentTarget.setPointerCapture(e.pointerId);
         const box = e.currentTarget.getBoundingClientRect();
@@ -47,17 +75,16 @@ export function PreviewTransformOverlay(p: {
           x: ((e.clientX - box.left) / box.width) * p.width,
           y: ((e.clientY - box.top) / box.height) * p.height,
           transform: structuredClone(p.transform),
-          handle: (e.target as HTMLElement).dataset.handle ?? 'se',
+          handle: handle ?? '',
+          selection: { ...selection },
         };
       }}
       onPointerMove={(e) => {
         const d = drag.current;
         if (!d) return;
         const box = e.currentTarget.getBoundingClientRect();
-        const x = ((e.clientX - box.left) / box.width) * p.width,
-          y = ((e.clientY - box.top) / box.height) * p.height;
-        const dx = x - d.x,
-          dy = y - d.y;
+        const dx = ((e.clientX - box.left) / box.width) * p.width - d.x,
+          dy = ((e.clientY - box.top) / box.height) * p.height - d.y;
         if (p.mode === 'move')
           setDraft({
             ...d.transform,
@@ -73,72 +100,55 @@ export function PreviewTransformOverlay(p: {
             p.height,
             d.transform,
           );
-          const sign = d.handle.includes('w') ? -1 : 1;
-          setDraft({
-            ...d.transform,
-            scale: clamp(
-              d.transform.scale * (1 + (sign * dx) / Math.max(1, original.width)),
-              0.1,
-              5,
-            ),
-          });
+          const horizontal = (d.handle.includes('w') ? -dx : dx) / original.width;
+          const vertical = (d.handle.includes('n') ? -dy : dy) / original.height;
+          const delta = Math.abs(horizontal) > Math.abs(vertical) ? horizontal : vertical;
+          setDraft({ ...d.transform, scale: clamp(d.transform.scale * (1 + delta), 0.1, 5) });
         } else {
-          const x1 = clamp(Math.min(d.x, x), rect.x, rect.x + rect.width),
-            y1 = clamp(Math.min(d.y, y), rect.y, rect.y + rect.height);
-          const x2 = clamp(Math.max(d.x, x), rect.x, rect.x + rect.width),
-            y2 = clamp(Math.max(d.y, y), rect.y, rect.y + rect.height);
-          setSelection({ x: x1, y: y1, width: x2 - x1, height: y2 - y1 });
+          const s = d.selection;
+          let left = s.x,
+            top = s.y,
+            right = s.x + s.width,
+            bottom = s.y + s.height;
+          if (d.handle.includes('w')) left = clamp(s.x + dx / rect.width, 0, right - 0.02);
+          if (d.handle.includes('e'))
+            right = clamp(s.x + s.width + dx / rect.width, left + 0.02, 1);
+          if (d.handle.includes('n')) top = clamp(s.y + dy / rect.height, 0, bottom - 0.02);
+          if (d.handle.includes('s'))
+            bottom = clamp(s.y + s.height + dy / rect.height, top + 0.02, 1);
+          updateCrop({ x: left, y: top, width: right - left, height: bottom - top });
         }
       }}
       onPointerUp={(e) => {
         if (!drag.current) return;
-        if (p.mode === 'crop' && selection && selection.width > 2 && selection.height > 2) {
-          p.onCommit({
-            ...p.transform,
-            crop: {
-              x: crop.x + ((selection.x - rect.x) / rect.width) * crop.width,
-              y: crop.y + ((selection.y - rect.y) / rect.height) * crop.height,
-              width: (selection.width / rect.width) * crop.width,
-              height: (selection.height / rect.height) * crop.height,
-            },
-          });
-        } else if (draft) p.onCommit(draft);
+        if (p.mode !== 'crop' && draft) p.onCommit(draft);
         drag.current = undefined;
         setDraft(undefined);
-        setSelection(undefined);
         e.currentTarget.releasePointerCapture(e.pointerId);
       }}
       onPointerCancel={() => {
+        if (drag.current && p.mode === 'crop') updateCrop(drag.current.selection);
         drag.current = undefined;
         setDraft(undefined);
-        setSelection(undefined);
       }}
     >
       <div
-        className="transform-outline"
+        className={`transform-outline ${p.mode === 'crop' ? 'crop-selection' : ''}`}
         style={{
-          left: `${(rect.x / p.width) * 100}%`,
-          top: `${(rect.y / p.height) * 100}%`,
-          width: `${(rect.width / p.width) * 100}%`,
-          height: `${(rect.height / p.height) * 100}%`,
+          left: `${(outline.x / p.width) * 100}%`,
+          top: `${(outline.y / p.height) * 100}%`,
+          width: `${(outline.width / p.width) * 100}%`,
+          height: `${(outline.height / p.height) * 100}%`,
         }}
       >
-        {p.mode === 'resize' &&
-          ['nw', 'ne', 'sw', 'se'].map((handle) => (
+        {p.mode !== 'move' &&
+          (p.mode === 'crop'
+            ? ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
+            : ['nw', 'ne', 'sw', 'se']
+          ).map((handle) => (
             <span key={handle} data-handle={handle} className={`resize-handle ${handle}`} />
           ))}
       </div>
-      {selection && (
-        <div
-          className="crop-selection"
-          style={{
-            left: `${(selection.x / p.width) * 100}%`,
-            top: `${(selection.y / p.height) * 100}%`,
-            width: `${(selection.width / p.width) * 100}%`,
-            height: `${(selection.height / p.height) * 100}%`,
-          }}
-        />
-      )}
     </div>
   );
 }
