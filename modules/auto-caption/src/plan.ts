@@ -6,11 +6,11 @@ import type { Range, Options } from '../../speech-auto-cut/src/contracts';
 
 // Detection sensitivity only: thresholds advance in equal steps; no editing margins.
 export const CAPTION_PRESETS = [
-  { label: '매우 높음', positive: 0.05, negative: 0.03 },
-  { label: '높음', positive: 0.275, negative: 0.165 },
-  { label: '중간', positive: 0.5, negative: 0.3 },
-  { label: '낮음', positive: 0.725, negative: 0.435 },
-  { label: '매우 낮음', positive: 0.95, negative: 0.57 },
+  { label: '매우 높음', positive: 0, negative: 0 },
+  { label: '높음', positive: 0.25, negative: 0.25 },
+  { label: '중간', positive: 0.5, negative: 0.5 },
+  { label: '낮음', positive: 0.75, negative: 0.75 },
+  { label: '매우 낮음', positive: 1, negative: 1 },
 ] as const;
 export function captionOptions(index: number): Options {
   return { ...CAPTION_PRESETS[index], beforeMs: 0, afterMs: 0, silenceMs: 100, minSpeechMs: 0, minRemoveMs: 100 };

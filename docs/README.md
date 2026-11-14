@@ -28,6 +28,8 @@
 
 ## 사이드 모듈
 
+- [module_upgrade_v1.md](./side-modules/module_upgrade_v1.md)
+
 - [auto_caption_v1.md](./auto-caption/auto_caption_v1.md)
 
 - [side_module_checklist_v1.md](./side-modules/side_module_checklist_v1.md)

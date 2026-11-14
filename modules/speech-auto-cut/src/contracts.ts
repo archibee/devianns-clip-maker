@@ -19,27 +19,27 @@ export const PRESETS: Record<
   veryHigh: {
     label: '매우 높음 · 최대한 보존',
     description: '아주 약한 소리도 음성으로 남깁니다. 잡음이 더 많이 남을 수 있습니다.',
-    options: { positive: 0.1, negative: 0.06, silenceMs: 700, minSpeechMs: 0 },
+    options: { positive: 0, negative: 0, silenceMs: 700, minSpeechMs: 0 },
   },
   high: {
     label: '높음 · 작은 목소리 보존',
     description: '작은 목소리와 말끝을 관대하게 판정합니다.',
-    options: { positive: 0.3, negative: 0.18, silenceMs: 550, minSpeechMs: 0 },
+    options: { positive: 0.25, negative: 0.25, silenceMs: 550, minSpeechMs: 0 },
   },
   medium: {
     label: '중간 · 기본',
     description: '음성 보존과 비음성 정리의 균형을 잡는 시작 설정입니다.',
-    options: { positive: 0.5, negative: 0.3, silenceMs: 400, minSpeechMs: 0 },
+    options: { positive: 0.5, negative: 0.5, silenceMs: 400, minSpeechMs: 0 },
   },
   low: {
     label: '낮음 · 또렷한 음성 위주',
     description: '음성을 더 엄격하게 판정합니다. 작은 목소리나 짧은 말이 누락될 수 있습니다.',
-    options: { positive: 0.7, negative: 0.42, silenceMs: 250, minSpeechMs: 0 },
+    options: { positive: 0.75, negative: 0.75, silenceMs: 250, minSpeechMs: 0 },
   },
   veryLow: {
     label: '매우 낮음 · 강한 음성 위주',
     description: '확률이 높은 음성만 남기는 강한 정리 설정입니다. 음성 누락에 주의하세요.',
-    options: { positive: 0.9, negative: 0.54, silenceMs: 100, minSpeechMs: 0 },
+    options: { positive: 1, negative: 1, silenceMs: 100, minSpeechMs: 0 },
   },
 };
 export const MARGIN_PRESETS: Record<
@@ -79,8 +79,8 @@ export const DEFAULT_OPTIONS: Options = {
 export const MARGIN_FIELDS: readonly (keyof Options)[] = ['beforeMs', 'afterMs', 'minRemoveMs'];
 export function optionsError(o: Options) {
   const fields: [keyof Options, number, number][] = [
-    ['positive', 0.05, 0.95],
-    ['negative', 0, 0.9],
+    ['positive', 0, 1],
+    ['negative', 0, 1],
     ['beforeMs', 0, 2000],
     ['afterMs', 0, 2000],
     ['silenceMs', 100, 3000],
@@ -89,7 +89,7 @@ export function optionsError(o: Options) {
   ];
   if (fields.some(([key, min, max]) => !Number.isFinite(o[key]) || o[key] < min || o[key] > max))
     return '설정값을 표시된 범위 안으로 입력하세요.';
-  if (o.negative >= o.positive) return '종료 확률은 시작 확률보다 작아야 합니다.';
+  if (o.negative > o.positive) return '종료 확률은 시작 확률 이하여야 합니다.';
   return undefined;
 }
 export type Analysis = { keep: Range[]; speechFrames: number; warnings: string[] };

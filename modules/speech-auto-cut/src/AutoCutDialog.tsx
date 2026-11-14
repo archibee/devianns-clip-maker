@@ -25,8 +25,8 @@ type Props = {
   onApply: (expected: Project, result: Project) => void;
 };
 const fields: { key: keyof Options; label: string; min: number; max: number; step: number }[] = [
-  { key: 'positive', label: '음성 시작 확률', min: 0.05, max: 0.95, step: 0.01 },
-  { key: 'negative', label: '음성 종료 확률', min: 0, max: 0.9, step: 0.01 },
+  { key: 'positive', label: '음성 시작 확률', min: 0, max: 1, step: 0.01 },
+  { key: 'negative', label: '음성 종료 확률', min: 0, max: 1, step: 0.01 },
   { key: 'beforeMs', label: '앞 여백 (ms)', min: 0, max: 2000, step: 10 },
   { key: 'afterMs', label: '뒤 여백 (ms)', min: 0, max: 2000, step: 10 },
   { key: 'silenceMs', label: '음성 종료 대기 (ms)', min: 100, max: 3000, step: 50 },
@@ -191,7 +191,7 @@ export default function AutoCutDialog(p: Props) {
         />
         <small>
           {field.min}–{field.max}
-          {field.key === 'negative' ? ' · 시작 확률 미만' : ''}
+          {field.key === 'negative' ? ' · 시작 확률 이하' : ''}
         </small>
       </label>
     );
@@ -297,6 +297,7 @@ export default function AutoCutDialog(p: Props) {
         <p className="auto-cut-preset-note">
           강도가 높을수록 약한 음성을 더 보존합니다. 확률은 정확도 수치가 아니며, 여백은 빈 화면
           삽입이 아닌 원본 영상·소리의 보존 길이입니다.
+          매우 높음(임계값 0)은 무음까지 포함할 수 있고, 매우 낮음(임계값 1)은 음성을 거의 감지하지 못할 수 있습니다.
         </p>
         <div className="auto-cut-body">
           <div className="auto-cut-settings">
