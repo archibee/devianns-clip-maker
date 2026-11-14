@@ -63,3 +63,30 @@ it('겹치는 영상 오디오를 시간순 블록으로 합산하고 클리핑�
   expect(times).toEqual([...times].sort((a, b) => a - b));
   expect(closed).toHaveBeenCalledTimes(2);
 });
+it('음소거 블록은 디코딩하지 않고 남은 영상만 재생하며 전체 음소거는 무음 블록을 만든다', async () => {
+  const p: Project = {
+    ...emptyProject(),
+    laneCount: 2,
+    clips: [0, 1].map((lane) => ({
+      id: `v${lane}`,
+      assetId: 'a',
+      lane,
+      startUs: 0,
+      inUs: 0,
+      outUs: 100_000,
+      muted: lane === 0,
+      transform: defaultTransform(),
+    })),
+  };
+  const getMedia = vi.fn(async () => ({ origin: 0, audio: {} }) as OpenMedia);
+  let peak = 0;
+  for await (const block of timelineAudio(p, getMedia))
+    for (const v of block.data) peak = Math.max(peak, Math.abs(v));
+  expect(peak).toBe(0.75);
+  expect(getMedia).toHaveBeenCalledTimes(1);
+  getMedia.mockClear();
+  p.clips[1].muted = true;
+  for await (const block of timelineAudio(p, getMedia))
+    expect(block.data.every((v) => v === 0)).toBe(true);
+  expect(getMedia).not.toHaveBeenCalled();
+});

@@ -71,6 +71,7 @@ export function buildProject(
         end = Math.min(row.endUs, range.endUs);
       if (end <= start) continue;
       clips.push({
+        muted: row.clip.muted,
         lane: videoLane,
         id: newId(),
         assetId: row.clip.assetId,

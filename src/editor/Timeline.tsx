@@ -14,11 +14,13 @@ import { trimAt, type Command } from '../project/commands';
 import { ASSET_DRAG, CLIP_DRAG } from './AssetPanel';
 import { PanelTitle } from './Panel';
 import { SubtitleBlock } from './SubtitleBlock';
+import { TimelineIcon } from './TimelineIcon';
 
 type Props = {
   activeLane: number;
   onLaneChange: (lane: number) => void;
   onDeleteLane: () => void;
+  onMoveLane: (direction: -1 | 1) => void;
   project: Project;
   timeUs: number;
   selected?: string;
@@ -152,70 +154,103 @@ export function Timeline(p: Props) {
   return (
     <section className="timeline-panel panel">
       <PanelTitle number="04" title="타임라인">
-        <span className="quality-badge">영상 + 원본 오디오 연결</span>
-        <div className="timeline-tools">
-          <button
-            disabled={p.locked || laneCount(p.project) >= 32}
-            onClick={() => {
-              p.onCommand({ type: 'addLane' });
-              p.onLaneChange(laneCount(p.project));
-            }}
-          >
-            ＋ 라인 추가
-          </button>
-          <button disabled={p.locked} onClick={p.onDeleteLane}>
-            라인 삭제
-          </button>
-          <button
-            disabled={p.locked || !!p.autoCutUnavailable}
-            title={p.autoCutUnavailable ?? '음성 기반 자동 컷편집'}
-            onClick={p.onAutoCut}
-          >
-            Auto Cut
-          </button>
-          <button
-            disabled={p.locked || !duration(p.project)}
-            onClick={p.onSplit}
-            title="재생 위치에서 블록 분할 (1 / S)"
-          >
-            ✂ 블록 분할
-          </button>
-          <button
-            disabled={p.locked || (!p.selected && !p.selectedCueIds.length)}
-            onClick={p.onDelete}
-            title="선택 블록 삭제 (2 / Delete)"
-          >
-            블록 삭제
-          </button>
-          <button disabled={p.locked || p.selectedIds.length < 2} onClick={p.onMerge}>
-            블록 합치기
-          </button>
-          <button
-            aria-label="선택 클립 왼쪽 이동"
-            disabled={p.locked || currentIndex <= 0}
-            onClick={() =>
-              p.onCommand({
-                type: 'move',
-                id: p.selected!,
-                index: p.project.clips.findIndex((c) => c.id === p.selected) - 1,
-              })
-            }
-          >
-            ← 이동
-          </button>
-          <button
-            aria-label="선택 클립 오른쪽 이동"
-            disabled={p.locked || currentIndex < 0 || currentIndex >= selectedLaneRows.length - 1}
-            onClick={() =>
-              p.onCommand({
-                type: 'move',
-                id: p.selected!,
-                index: p.project.clips.findIndex((c) => c.id === p.selected) + 1,
-              })
-            }
-          >
-            이동 →
-          </button>
+        <div className="timeline-tools" role="toolbar" aria-label="타임라인 도구">
+          <div className="timeline-tool-group" role="group" aria-label="라인 조작">
+            <button
+              aria-label="라인 추가"
+              disabled={p.locked || laneCount(p.project) >= 32}
+              onClick={() => {
+                p.onCommand({ type: 'addLane' });
+                p.onLaneChange(laneCount(p.project));
+              }}
+            >
+              <TimelineIcon name="add" />
+              라인 추가
+            </button>
+            <button disabled={p.locked} onClick={p.onDeleteLane}>
+              <TimelineIcon name="trash" />
+              라인 삭제
+            </button>
+            <button
+              aria-label="라인 위 ↑"
+              disabled={p.locked || p.activeLane <= 0}
+              onClick={() => p.onMoveLane(-1)}
+            >
+              <TimelineIcon name="up" />
+              라인 위
+            </button>
+            <button
+              aria-label="라인 아래 ↓"
+              disabled={p.locked || p.activeLane >= laneCount(p.project) - 1}
+              onClick={() => p.onMoveLane(1)}
+            >
+              <TimelineIcon name="down" />
+              라인 아래
+            </button>
+          </div>
+          <div className="timeline-tool-group" role="group" aria-label="블록 조작">
+            <button
+              disabled={p.locked || !duration(p.project)}
+              onClick={p.onSplit}
+              title="재생 위치에서 블록 분할 (1 / S)"
+            >
+              <TimelineIcon name="split" />
+              블록 분할
+            </button>
+            <button
+              disabled={p.locked || (!p.selected && !p.selectedCueIds.length)}
+              onClick={p.onDelete}
+              title="선택 블록 삭제 (2 / Delete)"
+            >
+              <TimelineIcon name="trash" />
+              블록 삭제
+            </button>
+            <button
+              disabled={p.locked || p.selectedIds.length < 2 || p.selectedCueIds.length > 0}
+              onClick={p.onMerge}
+            >
+              <TimelineIcon name="merge" />
+              블록 합치기
+            </button>
+            <button
+              aria-label="블록 이동 ←"
+              disabled={p.locked || currentIndex <= 0}
+              onClick={() =>
+                p.onCommand({
+                  type: 'move',
+                  id: p.selected!,
+                  index: p.project.clips.findIndex((c) => c.id === p.selected) - 1,
+                })
+              }
+            >
+              <TimelineIcon name="left" />
+              블록 이동
+            </button>
+            <button
+              aria-label="블록 이동 →"
+              disabled={p.locked || currentIndex < 0 || currentIndex >= selectedLaneRows.length - 1}
+              onClick={() =>
+                p.onCommand({
+                  type: 'move',
+                  id: p.selected!,
+                  index: p.project.clips.findIndex((c) => c.id === p.selected) + 1,
+                })
+              }
+            >
+              블록 이동
+              <TimelineIcon name="right" />
+            </button>
+          </div>
+          <div className="timeline-tool-group" role="group" aria-label="확장 기능">
+            <button
+              disabled={p.locked || !!p.autoCutUnavailable}
+              title={p.autoCutUnavailable ?? '선택 영상 블록 음성 분석'}
+              onClick={p.onAutoCut}
+            >
+              <TimelineIcon name="auto" />
+              Auto Cut
+            </button>
+          </div>
         </div>
         <label className="zoom-control">
           −
@@ -283,6 +318,12 @@ export function Timeline(p: Props) {
                 {rows.map(({ clip, startUs, endUs }, index) => {
                   const asset = p.project.assets.find((a) => a.id === clip.assetId)!;
                   if (clipLane(clip) !== lane) return null;
+                  const audioParts = (clip.parts ?? [clip]).filter(
+                    (part) => p.project.assets.find((a) => a.id === part.assetId)?.hasAudio,
+                  );
+                  const muted =
+                    audioParts.length > 0 &&
+                    (clip.muted ?? audioParts.every((part) => part.muted === true));
                   return (
                     <div
                       key={clip.id}
@@ -325,9 +366,45 @@ export function Timeline(p: Props) {
                         <strong>{asset.name}</strong>
                         <small>{timecode(endUs - startUs, p.project.fps)}</small>
                       </div>
-                      <div className={`clip-audio ${!asset.hasAudio ? 'silent' : ''}`}>
-                        <span>⌁ {asset.hasAudio ? '원본 오디오 · 연결됨' : '무음'}</span>
-                        <span className="link-icon">⛓</span>
+                      <div className={`clip-audio ${!audioParts.length || muted ? 'silent' : ''}`}>
+                        <span>
+                          {audioParts.length ? (muted ? '음소거됨' : '원본 오디오') : '무음 원본'}
+                        </span>
+                        <button
+                          className="clip-mute"
+                          aria-label={`클립 ${index + 1} ${muted ? '음소거 해제' : '음소거'}`}
+                          aria-pressed={muted}
+                          disabled={p.locked || !audioParts.length}
+                          draggable={false}
+                          title={
+                            p.selectedIds.includes(clip.id) && p.selectedIds.length > 1
+                              ? '선택 영상 전체에 적용'
+                              : muted
+                                ? '이 블록 음소거 해제'
+                                : '이 블록 음소거'
+                          }
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.code === 'Space') e.stopPropagation();
+                          }}
+                          onDragStart={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            p.onCommand({
+                              type: 'muteClips',
+                              ids: p.selectedIds.includes(clip.id)
+                                ? [...p.selectedIds, ...p.selectedCueIds]
+                                : [clip.id],
+                              muted: !muted,
+                            });
+                          }}
+                        >
+                          <TimelineIcon name={muted ? 'mute' : 'volume'} />
+                          <span>{muted ? '해제' : '음소거'}</span>
+                        </button>
                       </div>
                       {p.selectedIds.length < 2 && trimHandle(clip.id, 'in')}
                       {p.selectedIds.length < 2 && trimHandle(clip.id, 'out')}

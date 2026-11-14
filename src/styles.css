@@ -775,9 +775,37 @@ small {
 }
 .timeline-tools {
   display: flex;
-  gap: 5px;
+  gap: 10px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.timeline-panel .panel-actions {
+  min-width: 0;
+  flex: 1;
+}
+.timeline-panel .panel-title h2 {
+  flex-shrink: 0;
+}
+.timeline-tool-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.timeline-tool-group + .timeline-tool-group {
+  border-left: 1px solid var(--line);
+  padding-left: 10px;
+}
+.timeline-icon {
+  flex: 0 0 auto;
+  vertical-align: middle;
 }
 .timeline-tools button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
   min-height: 25px;
   padding: 3px 8px;
   font-size: 10px;
@@ -962,6 +990,36 @@ small {
   overflow: hidden;
   font-size: 8px;
   color: #8bd7bb;
+  align-items: center;
+  gap: 4px;
+}
+.clip-audio > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.clip-mute {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  padding: 0 3px;
+  font-size: 8px;
+  border: 1px solid #a4b3a9;
+  background: #343b36;
+  color: #e5f4e8;
+}
+.clip-mute[aria-pressed='true'] {
+  background: #684a24;
+  color: #ffe0a1;
+  border-color: #d3a963;
+}
+.clip-mute .timeline-icon {
+  width: 12px;
+  height: 12px;
 }
 .clip-audio.silent {
   background: #4b4b4b;

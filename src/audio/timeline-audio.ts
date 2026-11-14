@@ -80,7 +80,7 @@ export async function* timelineAudio(
   getMedia: (id: string) => Promise<OpenMedia>,
   fromUs = 0,
 ): AsyncGenerator<AudioBlock> {
-  const rows = mediaLayout(project);
+  const rows = mediaLayout(project).filter((r) => !r.clip.muted);
   const end = Math.round(seconds(duration(project)) * AUDIO_RATE);
   const active = new Map<string, { reader: PcmReader; media: OpenMedia }>();
   try {

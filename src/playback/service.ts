@@ -1,7 +1,14 @@
 import { localFontPayload } from '../render/local-fonts';
 import { timelineAudio, AUDIO_RATE } from '../audio/timeline-audio';
 import { MediaRegistry } from '../media/registry';
-import { duration, seconds, toUs, type Project, type Transform } from '../project/model';
+import {
+  duration,
+  seconds,
+  toUs,
+  hasTimelineAudio,
+  type Project,
+  type Transform,
+} from '../project/model';
 import { previewSize } from '../render/compositor';
 
 export type PlaybackState = {
@@ -162,9 +169,7 @@ export class PlaybackService {
     const token = ++this.audioToken;
     const startUs = this.state.timeUs;
     const endUs = duration(project);
-    const sound = project.clips.some((c) =>
-      (c.parts ?? [c]).some((part) => project.assets.find((a) => a.id === part.assetId)?.hasAudio),
-    );
+    const sound = hasTimelineAudio(project);
     this.notify({ playing: true, buffering: sound || !!this.canvas, error: undefined });
     try {
       let audio: AudioContext | undefined;

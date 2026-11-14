@@ -23,7 +23,13 @@ export type Transform = {
   y: number;
   crop?: Crop;
 };
-export type ClipPart = { assetId: string; inUs: Us; outUs: Us; transform: Transform };
+export type ClipPart = {
+  assetId: string;
+  inUs: Us;
+  outUs: Us;
+  transform: Transform;
+  muted?: boolean;
+};
 export type Clip = ClipPart & { id: string; startUs?: Us; parts?: ClipPart[]; lane?: number };
 export type Cue = {
   lane?: number;
@@ -138,6 +144,7 @@ export function mediaLayout(project: Project) {
                 {
                   clip: {
                     ...part,
+                    muted: item.clip.muted ?? part.muted,
                     lane: item.clip.lane,
                     id: item.clip.id,
                     inUs: part.inUs + from - offset,
@@ -160,6 +167,10 @@ export function timecode(timeUs: Us, fps: Fps = 30) {
   const frames = Math.floor(((Math.max(0, timeUs) % 1_000_000) * fps) / 1_000_000 + 0.0001);
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
 }
+export const hasTimelineAudio = (p: Project) =>
+  mediaLayout(p).some(
+    (r) => !r.clip.muted && p.assets.find((a) => a.id === r.clip.assetId)?.hasAudio,
+  );
 export function cueErrors(project: Project): string[] {
   const cues = [...project.subtitles].sort((a, b) => a.startUs - b.startUs);
   const errors: string[] = [];

@@ -24,9 +24,9 @@ try {
     .getByTestId('import-input')
     .setInputFiles(['test-results/red.mp4', 'test-results/blue.mp4']);
   await page.getByRole('button', { name: 'red.mp4 타임라인에 추가', exact: true }).click();
-  await page.getByRole('button', { name: '＋ 라인 추가', exact: true }).click();
+  await page.getByRole('button', { name: '라인 추가', exact: true }).click();
   await page.getByRole('button', { name: 'blue.mp4 타임라인에 추가', exact: true }).click();
-  await page.getByRole('button', { name: '＋ 라인 추가', exact: true }).click();
+  await page.getByRole('button', { name: '라인 추가', exact: true }).click();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: '저장', exact: true }).click();
   const project = JSON.parse(await readFile(await (await downloadPromise).path(), 'utf8'));

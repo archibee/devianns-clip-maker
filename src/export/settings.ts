@@ -1,5 +1,11 @@
 import { canEncodeAudio, canEncodeVideo, type AudioCodec, type VideoCodec } from 'mediabunny';
-import { dimensions, duration, type ExportSettings, type Project } from '../project/model';
+import {
+  dimensions,
+  duration,
+  hasTimelineAudio,
+  type ExportSettings,
+  type Project,
+} from '../project/model';
 
 export const MEMORY_LIMIT = 256 * 1024 * 1024;
 export const videoBitrate = (settings: ExportSettings) =>
@@ -10,10 +16,7 @@ export const videoBitrate = (settings: ExportSettings) =>
       : 2_500_000) *
     settings.fps) /
   30;
-export const hasAudio = (p: Project) =>
-  p.clips.some((c) =>
-    (c.parts ?? [c]).some((part) => p.assets.find((a) => a.id === part.assetId)?.hasAudio),
-  );
+export const hasAudio = hasTimelineAudio;
 export function estimateBytes(p: Project, settings: ExportSettings) {
   return Math.ceil(
     (((videoBitrate(settings) + (hasAudio(p) ? 128_000 : 0)) * duration(p)) / 1_000_000 / 8) * 1.2,

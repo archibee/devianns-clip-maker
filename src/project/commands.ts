@@ -22,6 +22,8 @@ export type Command =
   | { type: 'assets'; assets: Asset[] }
   | { type: 'insert'; assetId: string; index: number; lane?: number; timeUs?: number }
   | { type: 'addLane' }
+  | { type: 'moveLane'; lane: number; direction: -1 | 1 }
+  | { type: 'muteClips'; ids: string[]; muted: boolean }
   | { type: 'deleteLane'; lane: number }
   | { type: 'placeBlock'; id: string; lane: number; timeUs: number }
   | { type: 'deleteBlocks'; ids: string[] }
@@ -46,6 +48,52 @@ export type Command =
 export function applyCommand(p: Project, cmd: Command): Project {
   let result = p;
   switch (cmd.type) {
+    case 'moveLane': {
+      if (
+        !Number.isInteger(cmd.lane) ||
+        cmd.lane < 0 ||
+        cmd.lane >= laneCount(p) ||
+        (cmd.direction !== -1 && cmd.direction !== 1)
+      )
+        throw new Error('라인 이동 값이 올바르지 않습니다.');
+      const target = cmd.lane + cmd.direction;
+      if (target < 0 || target >= laneCount(p)) return p;
+      const moved = (lane: number) =>
+        lane === cmd.lane ? target : lane === target ? cmd.lane : lane;
+      result = parseProject(
+        JSON.stringify({
+          ...p,
+          laneCount: laneCount(p),
+          clips: layout(p).map((r) => ({
+            ...r.clip,
+            startUs: r.startUs,
+            lane: moved(clipLane(r.clip)),
+          })),
+          subtitles: p.subtitles.map((c) => ({ ...c, lane: moved(cueLane(c)) })),
+        }),
+      );
+      break;
+    }
+    case 'muteClips': {
+      if (typeof cmd.muted !== 'boolean') throw new Error('음소거 설정이 올바르지 않습니다.');
+      const ids = new Set(
+        p.clips
+          .filter(
+            (c) =>
+              cmd.ids.includes(c.id) &&
+              (c.parts ?? [c]).some(
+                (part) => p.assets.find((a) => a.id === part.assetId)?.hasAudio,
+              ),
+          )
+          .map((c) => c.id),
+      );
+      if (!ids.size) return p;
+      result = {
+        ...p,
+        clips: p.clips.map((c) => (ids.has(c.id) ? { ...c, muted: cmd.muted } : c)),
+      };
+      break;
+    }
     case 'deleteLane': {
       if (!Number.isInteger(cmd.lane) || cmd.lane < 0 || cmd.lane >= laneCount(p))
         throw new Error('삭제할 라인이 없습니다.');
@@ -274,6 +322,7 @@ export function applyCommand(p: Project, cmd: Command): Project {
           inUs: c.clip.inUs,
           outUs: c.clip.outUs,
           transform: structuredClone(c.clip.transform),
+          muted: c.clip.muted,
         }));
       const length = parts.reduce((sum, c) => sum + c.outUs - c.inUs, 0);
       const merged: Clip = {

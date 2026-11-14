@@ -95,9 +95,9 @@ export function App() {
   const autoCutReason = useMemo(
     () =>
       supported
-        ? autoCutUnavailable(project, registry, selectedIds)
+        ? autoCutUnavailable(project, registry, selectedCueIds.length ? [] : selectedIds)
         : '이 브라우저는 음성 분석을 지원하지 않습니다.',
-    [supported, project, registry, registryVersion, selectedIds],
+    [supported, project, registry, registryVersion, selectedIds, selectedCueIds],
   );
   function act(action: HistoryAction) {
     if (lockedRef.current) return false;
@@ -180,6 +180,10 @@ export function App() {
     } else if (command({ type: 'deleteLane', lane }))
       setActiveLane(Math.min(lane, Math.max(0, laneCount(current) - 2)));
   }
+  function moveLane(direction: -1 | 1) {
+    const lane = Math.min(activeLane, laneCount(project) - 1);
+    if (command({ type: 'moveLane', lane, direction })) setActiveLane(lane + direction);
+  }
   function confirmDeleteLane() {
     const request = deleteLaneRequest;
     if (modal !== 'deleteLane' || !request) return;
@@ -202,16 +206,14 @@ export function App() {
     }
   }
   function merge() {
-    if (selectedCue || selectedIds.length < 2) return;
+    if (selectedCueIds.length || selectedIds.length < 2) return;
     command({ type: 'merge', ids: selectedIds });
   }
   function remove() {
-    if (selectedCueIds.length) {
-      command({ type: 'deleteCues', ids: selectedCueIds });
+    if (!selectedIds.length && !selectedCueIds.length) return;
+    if (command({ type: 'deleteBlocks', ids: [...selectedIds, ...selectedCueIds] })) {
       setSelectedCue(undefined);
       setSelectedCueIds([]);
-    } else if (selected) {
-      command({ type: 'deleteClips', ids: selectedIds.length ? selectedIds : [selected] });
       setSelectedIds([]);
       setSelected(undefined);
     }
@@ -229,8 +231,10 @@ export function App() {
     setSelected(ids.at(-1));
     const row = layout(project).find((c) => c.clip.id === id);
     if (row) playback.seek(row.startUs);
-    setSelectedCue(undefined);
-    setSelectedCueIds([]);
+    if (!additive) {
+      setSelectedCue(undefined);
+      setSelectedCueIds([]);
+    }
     setInspectorTab('clip');
   }
   function selectCue(id?: string, additive = false) {
@@ -246,8 +250,10 @@ export function App() {
         : [id];
     setSelectedCueIds(ids);
     setSelectedCue(ids.length === 1 ? ids[0] : undefined);
-    setSelectedIds([]);
-    setSelected(undefined);
+    if (!additive) {
+      setSelectedIds([]);
+      setSelected(undefined);
+    }
     setInspectorTab('subtitle');
   }
   function copyCue() {
@@ -273,7 +279,10 @@ export function App() {
     return true;
   }
   function selectAll() {
-    if (selectedCueIds.some((id) => project.subtitles.some((c) => c.id === id))) {
+    if (
+      (inspectorTab === 'subtitle' || !selectedIds.length) &&
+      selectedCueIds.some((id) => project.subtitles.some((c) => c.id === id))
+    ) {
       playback.pause();
       const ids = project.subtitles.map((c) => c.id);
       setSelectedCueIds(ids);
@@ -609,13 +618,17 @@ export function App() {
           onSeek={(us) => playback.seek(us)}
         />
         <Timeline
+          onMoveLane={moveLane}
           onDeleteLane={deleteLane}
           activeLane={Math.min(activeLane, laneCount(project) - 1)}
           onLaneChange={setActiveLane}
           selectedCueIds={selectedCueIds}
           autoCutUnavailable={autoCutReason}
           onAutoCut={() => {
-            if (!locked && !autoCutUnavailable(project, registry, selectedIds)) {
+            if (
+              !locked &&
+              !autoCutUnavailable(project, registry, selectedCueIds.length ? [] : selectedIds)
+            ) {
               playback.pause();
               setAutoCutTarget(selectedIds[0]);
               setModal('autoCut');

@@ -92,7 +92,8 @@ export function parseProject(text: string): Project {
       !us(c.inUs) ||
       !us(c.outUs) ||
       Number(c.inUs) >= Number(c.outUs) ||
-      !object(c.transform)
+      !object(c.transform) ||
+      (c.muted !== undefined && typeof c.muted !== 'boolean')
     )
       return fail();
     const a = p.assets.find((x: Record<string, unknown>) => x.id === c.assetId);
@@ -107,7 +108,8 @@ export function parseProject(text: string): Project {
           !us(part.inUs) ||
           !us(part.outUs) ||
           Number(part.outUs) <= Number(part.inUs) ||
-          !transform(part.transform)
+          !transform(part.transform) ||
+          (part.muted !== undefined && typeof part.muted !== 'boolean')
         )
           return fail();
         const source = p.assets.find((x: Record<string, unknown>) => x.id === part.assetId);
