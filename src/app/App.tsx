@@ -1,4 +1,6 @@
 import { prepareLocalFonts } from '../render/local-fonts';
+import { usePwaInstall, type InstallResult } from '../pwa/usePwaInstall';
+import { InstallDialog } from '../pwa/InstallDialog';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { autoCutUnavailable } from '../../modules/speech-auto-cut/src/eligibility';
 import { AutoCutBoundary, AutoCutPending } from '../../modules/speech-auto-cut/src/ModuleBoundary';
@@ -40,6 +42,8 @@ import { autosave, recover, saveProject } from '../storage/project-storage';
 const AutoCutDialog = lazy(() => import('../../modules/speech-auto-cut/src/AutoCutDialog'));
 
 export function App() {
+  const installation = usePwaInstall();
+  const [installResult, setInstallResult] = useState<InstallResult>({ status: 'unavailable' });
   const [history, setHistory] = useState(() => initialHistory(emptyProject()));
   const historyRef = useRef(history);
   historyRef.current = history;
@@ -70,7 +74,9 @@ export function App() {
   const [message, setMessage] = useState<string>();
   const dismissMessage = useCallback(() => setMessage(undefined), []);
   const [notice, setNotice] = useState('영상 파일은 서버로 전송되지 않습니다.');
-  const [modal, setModal] = useState<'export' | 'help' | 'recover' | 'autoCut' | 'deleteLane'>();
+  const [modal, setModal] = useState<
+    'export' | 'help' | 'recover' | 'autoCut' | 'deleteLane' | 'install'
+  >();
   const [autoCutTarget, setAutoCutTarget] = useState<string>();
   const [deleteLaneRequest, setDeleteLaneRequest] = useState<{
     lane: number;
@@ -85,7 +91,11 @@ export function App() {
   const reconnectPicker = useRef<HTMLInputElement>(null);
   const reconnectAsset = useRef<Asset | undefined>(undefined);
   const locked =
-    exportState.status === 'running' || importing || modal === 'autoCut' || modal === 'deleteLane';
+    exportState.status === 'running' ||
+    importing ||
+    modal === 'autoCut' ||
+    modal === 'deleteLane' ||
+    installation.installing;
   const lockedRef = useRef(locked);
   lockedRef.current = locked;
   const supported =
@@ -501,6 +511,17 @@ export function App() {
   return (
     <div className="app-shell">
       <Toolbar
+        installed={installation.installed}
+        installing={installation.installing}
+        onInstall={() => {
+          if (lockedRef.current) return;
+          playback.pause();
+          void installation.requestInstall().then((result) => {
+            if (result.status === 'accepted' || result.status === 'installed'||result.status==='pending') return;
+            setInstallResult(result);
+            setModal('install');
+          });
+        }}
         project={project}
         locked={locked}
         canUndo={!!history.past.length}
@@ -618,7 +639,12 @@ export function App() {
           onSeek={(us) => playback.seek(us)}
         />
         <Timeline
-          onClearSelection={()=>{setSelected(undefined);setSelectedIds([]);setSelectedCue(undefined);setSelectedCueIds([]);}}
+          onClearSelection={() => {
+            setSelected(undefined);
+            setSelectedIds([]);
+            setSelectedCue(undefined);
+            setSelectedCueIds([]);
+          }}
           onMoveLane={moveLane}
           onDeleteLane={deleteLane}
           activeLane={Math.min(activeLane, laneCount(project) - 1)}
@@ -692,6 +718,9 @@ export function App() {
         />
       )}
       {modal === 'help' && <HelpDialog onClose={() => setModal(undefined)} />}
+      {modal === 'install' && (
+        <InstallDialog result={installResult} onClose={() => setModal(undefined)} />
+      )}
       {modal === 'deleteLane' && deleteLaneRequest && (
         <Dialog
           title={`라인 T${deleteLaneRequest.lane + 1} 삭제`}

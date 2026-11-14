@@ -10,6 +10,9 @@ type Props = {
   onRedo: () => void;
   onOpen: () => void;
   onSave: () => void;
+  onInstall: () => void;
+  installed: boolean;
+  installing: boolean;
   onExport: () => void;
   onHelp: () => void;
 };
@@ -36,6 +39,17 @@ export function Toolbar(p: Props) {
         </button>
         <button disabled={p.locked} onClick={p.onSave}>
           저장
+        </button>
+        <button
+          disabled={p.locked || p.installed || p.installing}
+          onClick={p.onInstall}
+          title={
+            p.installed
+              ? '앱으로 설치되었거나 앱 창에서 실행 중입니다.'
+              : '앱 설치 또는 설치 방법 안내'
+          }
+        >
+          {p.installed ? '설치됨' : p.installing ? '설치 중…' : '앱 설치'}
         </button>
         <span className="divider" />
         <button
