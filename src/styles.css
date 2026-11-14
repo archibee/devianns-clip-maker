@@ -1317,22 +1317,92 @@ small {
   accent-color: var(--accent);
   margin-top: 10px;
 }
-.shortcut-list {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  margin: 22px 0;
+.dialog:has(> .editor-help) {
+  width: 760px;
 }
-.shortcut-list > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.editor-help > section {
+  margin-bottom: 22px;
 }
-.shortcut-list dd {
+.editor-help h3 {
+  font-size: 13px;
+  margin-bottom: 10px;
+  color: #f1f1f1;
+}
+.editor-help p {
+  line-height: 1.7;
+}
+.help-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.help-steps li {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background: #222;
+}
+.help-step-number {
+  flex-shrink: 0;
+  color: var(--accent);
+  font:
+    11px ui-monospace,
+    monospace;
+  padding-top: 2px;
+}
+.help-steps h4 {
   font-size: 11px;
-  color: #cbcbcb;
+  color: #eee;
+  margin: 0 0 6px;
 }
-.shortcut-list kbd {
+.help-steps p,
+.help-caption {
+  font-size: 11px;
+  color: #c2c2c2;
+}
+.help-caption {
+  margin-bottom: 10px;
+}
+.help-shortcuts {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+  table-layout: fixed;
+}
+.help-shortcuts th,
+.help-shortcuts td {
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid #4c4c4c;
+  overflow-wrap: anywhere;
+}
+.help-shortcuts thead th {
+  color: #aaa;
+  font-size: 10px;
+  font-weight: 500;
+}
+.help-shortcuts thead th:first-child {
+  width: 43%;
+}
+.help-shortcuts tbody th[scope='row'] {
+  font-weight: 400;
+}
+.help-shortcuts td {
+  color: #dedede;
+  line-height: 1.6;
+}
+.help-shortcut-group th {
+  background: #202020;
+  color: var(--accent);
+  font-size: 10px;
+  padding-top: 10px;
+}
+.help-shortcuts kbd {
   border: 1px solid #6d6d6d;
   border-bottom-width: 3px;
   border-radius: 4px;
@@ -1340,8 +1410,54 @@ small {
   font:
     10px ui-monospace,
     monospace;
-  padding: 5px 8px;
+  padding: 3px 6px;
   color: #ececec;
+  display: inline-block;
+  line-height: 1.6;
+}
+.help-notes {
+  background: #202020;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.help-notes p {
+  font-size: 11px;
+  color: #bbb;
+}
+.help-notes p + p {
+  margin-top: 7px;
+}
+.help-notes strong {
+  color: #eee;
+  margin-right: 5px;
+}
+.help-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-top: 1px solid #555;
+  padding-top: 14px;
+}
+.help-footer a {
+  color: #bcbcbc;
+  font-size: 10px;
+}
+@media (max-width: 600px) {
+  .help-steps {
+    grid-template-columns: 1fr;
+  }
+  .help-shortcuts th,
+  .help-shortcuts td {
+    padding: 8px 5px;
+  }
+  .help-shortcuts kbd {
+    font-size: 9px;
+    padding: 2px 4px;
+  }
 }
 ::-webkit-scrollbar {
   height: 8px;

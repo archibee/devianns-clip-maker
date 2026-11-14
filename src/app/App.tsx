@@ -5,6 +5,7 @@ import { AutoCutBoundary, AutoCutPending } from '../../modules/speech-auto-cut/s
 import { AssetPanel } from '../editor/AssetPanel';
 import { ExportDialog } from '../editor/ExportDialog';
 import { Inspector, NumberField } from '../editor/Inspector';
+import { HelpDialog } from '../editor/HelpDialog';
 import { Dialog } from '../editor/Panel';
 import { PreviewPanel } from '../editor/PreviewPanel';
 import { Timeline } from '../editor/Timeline';
@@ -542,48 +543,7 @@ export function App() {
           onClose={() => setModal(undefined)}
         />
       )}
-      {modal === 'help' && (
-        <Dialog title="편집 가이드 & 단축키" onClose={() => setModal(undefined)}>
-          <p>
-            ① 임포트 → ② 에셋을 타임라인으로 드래그 → ③ 재생 위치에서 분할 → ④ 순서·원본 구간 조정 →
-            ⑤ 내보내기
-          </p>
-          <dl className="shortcut-list">
-            {[
-              ['Space', '재생 / 정지'],
-              ['← / →', '이전 / 다음 프레임'],
-              ['S', '재생 위치에서 분할'],
-              ['Delete', '선택한 클립 삭제'],
-              ['Ctrl / ⌘ + Z', '실행 취소'],
-              ['Ctrl / ⌘ + Shift + Z', '다시 실행'],
-            ].map(([key, text]) => (
-              <div key={key}>
-                <dt>
-                  <kbd>{key}</kbd>
-                </dt>
-                <dd>{text}</dd>
-              </div>
-            ))}
-          </dl>
-          <p className="hint">
-            텍스트 입력 중에는 편집 단축키가 실행되지 않습니다. 에셋 우클릭 또는 ＋ 버튼으로도
-            삽입할 수 있습니다. 원본 오디오는 영상과 함께 편집되며 독립 오디오 편집은 제공하지
-            않습니다.
-          </p>
-          <button className="primary" onClick={() => setModal(undefined)}>
-            편집으로 돌아가기
-          </button>
-          <p className="hint">
-            <a
-              href={`${import.meta.env.BASE_URL}THIRD_PARTY_LICENSES.txt`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              오픈소스 라이선스 및 원본 안내
-            </a>
-          </p>
-        </Dialog>
-      )}
+      {modal === 'help' && <HelpDialog onClose={() => setModal(undefined)} />}
       {modal === 'recover' && (
         <Dialog
           title="이전 편집을 복구할까요?"
