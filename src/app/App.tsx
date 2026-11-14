@@ -28,6 +28,7 @@ import {
   layout,
   laneCount,
   clipLane,
+  clipUsesAsset,
   cueLane,
   seconds,
   toUs,
@@ -76,8 +77,11 @@ export function App() {
   const dismissMessage = useCallback(() => setMessage(undefined), []);
   const [notice, setNotice] = useState('영상 파일은 서버로 전송되지 않습니다.');
   const [modal, setModal] = useState<
-    'export' | 'help' | 'recover' | 'autoCut' | 'deleteLane' | 'install'
+    'export' | 'help' | 'recover' | 'autoCut' | 'deleteLane' | 'install'|'newProject'|'deleteAsset'
   >();
+  const [newProjectRequest,setNewProjectRequest]=useState<Project>();
+  const [newProjectSaved,setNewProjectSaved]=useState(false);
+  const [deleteAssetRequest,setDeleteAssetRequest]=useState<{id:string;project:Project;count:number}>();
   const [autoCutTarget, setAutoCutTarget] = useState<string>();
   const [deleteLaneRequest, setDeleteLaneRequest] = useState<{
     lane: number;
@@ -96,6 +100,7 @@ export function App() {
     importing ||
     modal === 'autoCut' ||
     modal === 'deleteLane' ||
+    modal === 'newProject' || modal==='deleteAsset' ||
     installation.installing;
   const lockedRef = useRef(locked);
   lockedRef.current = locked;
@@ -132,6 +137,34 @@ export function App() {
   }
   function command(cmd: Command) {
     return act({ type: 'command', command: cmd });
+  }
+  function createProject(){
+    if(modal!=='newProject'||!newProjectRequest)return;
+    if(historyRef.current.present!==newProjectRequest){setMessage('프로젝트가 변경됐습니다. 취소 후 다시 시도하세요.');return;}
+    playback.pause();
+    const next=initialHistory(emptyProject());
+    historyRef.current=next;pendingSeek.current=0;cueClipboard.current=undefined;reconnectAsset.current=undefined;
+    setHistory(next);setSelected(undefined);setSelectedIds([]);setSelectedCue(undefined);setSelectedCueIds([]);setActiveLane(0);setInspectorTab('clip');setRecovery(undefined);setAutoCutTarget(undefined);setExportState({status:'idle',progress:0,stage:''});
+    setMessage(undefined);setNotice('새 프로젝트를 만들었습니다.');setModal(undefined);setNewProjectRequest(undefined);setNewProjectSaved(false);
+  }
+  function removeAsset(id:string){
+    if(lockedRef.current)return;
+    const current=historyRef.current.present;if(!current.assets.some(a=>a.id===id))return;
+    const count=current.clips.filter(c=>clipUsesAsset(c,id)).length;
+    if(count){playback.pause();setMessage(undefined);setDeleteAssetRequest({id,project:current,count});setModal('deleteAsset');}
+    else if(command({type:'removeAsset',id})){
+      if(cueClipboard.current?.clips.some(c=>clipUsesAsset(c,id)))cueClipboard.current=undefined;
+    }
+  }
+  function confirmRemoveAsset(){
+    const request=deleteAssetRequest;if(modal!=='deleteAsset'||!request)return;
+    try{
+      if(historyRef.current.present!==request.project)throw new Error('프로젝트가 변경됐습니다. 취소 후 다시 시도하세요.');
+      const next=historyReducer(historyRef.current,{type:'command',command:{type:'removeAsset',id:request.id}});
+      playback.pause();historyRef.current=next;setHistory(next);
+      if(cueClipboard.current?.clips.some(c=>clipUsesAsset(c,request.id)))cueClipboard.current=undefined;
+      setDeleteAssetRequest(undefined);setModal(undefined);setMessage(undefined);
+    }catch(error){setMessage(error instanceof Error?error.message:String(error));}
   }
   function applyAutoCut(expected: Project, result: Project) {
     if (
@@ -504,6 +537,7 @@ export function App() {
   return (
     <div className="app-shell">
       <Toolbar
+        onNew={()=>{if(lockedRef.current||!restoreReady)return;playback.pause();setNewProjectRequest(historyRef.current.present);setNewProjectSaved(false);setMessage(undefined);setModal('newProject');}}
         installed={installation.installed}
         installing={installation.installing}
         onInstall={() => {
@@ -581,6 +615,7 @@ export function App() {
       </div>
       <main className="workspace" aria-busy={locked}>
         <AssetPanel
+          onRemove={removeAsset}
           project={project}
           registry={registry}
           importing={importing}
@@ -593,6 +628,7 @@ export function App() {
           }}
         />
         <PreviewPanel
+          key={project.id}
           selectedIds={selectedIds}
           project={project}
           selected={selected}
@@ -637,6 +673,7 @@ export function App() {
           onSeek={(us) => playback.seek(us)}
         />
         <Timeline
+          key={project.id}
           onClearSelection={() => {
             setSelected(undefined);
             setSelectedIds([]);
@@ -716,6 +753,22 @@ export function App() {
         />
       )}
       {modal === 'help' && <HelpDialog onClose={() => setModal(undefined)} />}
+      {modal==='newProject'&&newProjectRequest&&<Dialog title="새 프로젝트 만들기" onClose={()=>{setModal(undefined);setNewProjectRequest(undefined);}}>
+        <p>현재 프로젝트를 JSON으로 저장하거나, 저장하지 않고 새 프로젝트를 만들 수 있습니다. 원본 파일은 변경되지 않습니다.</p>
+        {newProjectSaved&&<p role="status">JSON 다운로드를 요청했습니다. 파일이 저장됐는지 확인한 뒤 새 프로젝트 만들기를 선택하세요. 다운로드 취소/차단 여부는 자동으로 확인할 수 없습니다.</p>}
+        {message&&<p className="inline-error" role="alert">{message}</p>}
+        <footer className="dialog-footer project-start-actions">
+          <button onClick={()=>{setModal(undefined);setNewProjectRequest(undefined);}}>취소</button>
+          <button onClick={createProject}>{newProjectSaved?'새 프로젝트 만들기':'저장하지 않고 새로 만들기'}</button>
+          <button className="primary" onClick={()=>{try{saveProject(newProjectRequest);setNewProjectSaved(true);setMessage(undefined);}catch(error){setMessage(error instanceof Error?error.message:String(error));}}}>{newProjectSaved?'다시 저장':'현재 프로젝트 저장'}</button>
+        </footer>
+      </Dialog>}
+      {modal==='deleteAsset'&&deleteAssetRequest&&<Dialog title="사용 중인 에셋 삭제" onClose={()=>{setModal(undefined);setDeleteAssetRequest(undefined);}}>
+        <p>이 에셋은 영상 블록 {deleteAssetRequest.count}개에서 사용 중입니다. 에셋을 지우면 해당 영상 블록도 타임라인에서 삭제됩니다. 계속하시겠습니까?</p>
+        <p>합친 블록에 포함되어 있으면 그 블록 전체가 삭제됩니다. 다른 블록의 시간과 자막은 유지되며 실행 취소로 복구할 수 있습니다.</p>
+        {message&&<p className="inline-error" role="alert">{message}</p>}
+        <footer className="dialog-footer"><button onClick={()=>{setModal(undefined);setDeleteAssetRequest(undefined);}}>취소</button><button className="danger" onClick={confirmRemoveAsset}>확인 · 에셋 삭제</button></footer>
+      </Dialog>}
       {modal === 'install' && (
         <InstallDialog result={installResult} onClose={() => setModal(undefined)} />
       )}

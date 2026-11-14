@@ -12,6 +12,7 @@ type Props = {
   locked: boolean;
   onImport: (files: File[]) => void;
   onInsert: (id: string) => void;
+  onRemove:(id:string)=>void;
   onReconnect: (asset: Asset) => void;
 };
 export function AssetPanel(p: Props) {
@@ -106,6 +107,9 @@ export function AssetPanel(p: Props) {
                   ＋
                 </button>
               )}
+              <button className="remove-asset" aria-label={`${asset.name} 에셋 삭제`} title="에셋 삭제" disabled={p.locked||p.importing} draggable={false}
+                onPointerDown={e=>e.stopPropagation()} onDragStart={e=>{e.preventDefault();e.stopPropagation();}}
+                onClick={e=>{e.stopPropagation();setMenu(undefined);p.onRemove(asset.id);}}>×</button>
               {menu === asset.id && (
                 <div className="context-menu" role="menu">
                   <button

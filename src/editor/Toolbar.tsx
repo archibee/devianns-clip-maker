@@ -10,6 +10,7 @@ type Props = {
   onRedo: () => void;
   onOpen: () => void;
   onSave: () => void;
+  onNew:()=>void;
   onInstall: () => void;
   installed: boolean;
   installing: boolean;
@@ -40,6 +41,7 @@ export function Toolbar(p: Props) {
         <button disabled={p.locked} onClick={p.onSave}>
           저장
         </button>
+        <button disabled={p.locked} onClick={p.onNew}>새로 만들기</button>
         <button
           disabled={p.locked || p.installed || p.installing}
           onClick={p.onInstall}

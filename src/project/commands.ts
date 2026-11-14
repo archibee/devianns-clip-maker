@@ -1,5 +1,6 @@
 import {
   clipDuration,
+  clipUsesAsset,
   defaultTransform,
   duration,
   newId,
@@ -21,6 +22,7 @@ import { validateBlockPlacement, moveGroup, resolveMoveStart } from './block-pla
 
 export type Command =
   | { type: 'assets'; assets: Asset[] }
+  | {type:'removeAsset';id:string}
   | { type: 'insert'; assetId: string; index: number; lane?: number; timeUs?: number }
   | { type: 'addLane' }
   | { type: 'moveLane'; lane: number; direction: -1 | 1 }
@@ -50,6 +52,9 @@ export type Command =
 export function applyCommand(p: Project, cmd: Command): Project {
   let result = p;
   switch (cmd.type) {
+    case 'removeAsset':
+      if(!p.assets.some(a=>a.id===cmd.id))return p;
+      result={...p,assets:p.assets.filter(a=>a.id!==cmd.id),clips:layout(p).filter(r=>!clipUsesAsset(r.clip,cmd.id)).map(r=>({...r.clip,startUs:r.startUs}))};break;
     case 'moveBlocks': {
       const group = moveGroup(p, cmd.ids);
       if (cmd.ids.length > 1 && cmd.lane !== group.lane)

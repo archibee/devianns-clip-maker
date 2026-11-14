@@ -100,7 +100,7 @@ const shortcuts = [
   {
     group: '재생·탐색',
     rows: [
-      ['Space', '재생 / 일시 정지'],
+      ['Space', '재생 / 일시 정지 · 슬라이더/일반 버튼에 포커스가 있어도 사용'],
       ['← / →', '이전 / 다음 프레임'],
     ],
   },
@@ -204,6 +204,8 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
             <strong>프로젝트 다시 열기</strong> JSON에는 원본 영상이 포함되지 않습니다. 원본 파일을
             보관하고 필요하면 다시 연결하세요.
           </p>
+          <p><strong>새로 만들기</strong> 상단 버튼에서 현재 프로젝트를 저장하거나 바로 새 프로젝트로 전환할 수 있습니다. 저장은 다운로드 요청이므로 파일 저장을 확인한 후 전환하세요.</p>
+          <p><strong>에셋 삭제</strong> 카드의 ×로 목록에서 제거합니다. 사용 중인 에셋은 확인 후 참조하는 영상 블록도 삭제하며, 실행 취소로 복구할 수 있습니다.</p>
         </aside>
         <footer className="help-footer">
           <a

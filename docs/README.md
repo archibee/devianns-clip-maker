@@ -44,6 +44,10 @@
 - [timeline_upgrade_v7.md](./timeline/timeline_upgrade_v7.md)
 - [timeline_upgrade_v8.md](./timeline/timeline_upgrade_v8.md)
 
+## 최종 편의 기능
+
+- [final_upgrade_v1.md](./final/final_upgrade_v1.md)
+
 ## 기본 문서
 
 - [프로젝트 소개](../README.md)

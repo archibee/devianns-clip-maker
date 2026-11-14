@@ -398,7 +398,7 @@ small {
 .add-asset {
   position: absolute;
   top: 4px;
-  right: 4px;
+  right: 28px;
   padding: 0;
   min-height: 20px;
   width: 20px;
@@ -407,6 +407,8 @@ small {
   color: var(--accent);
   border-color: #5f5f5f;
 }
+.remove-asset {position:absolute;top:4px;right:4px;width:20px;min-height:20px;padding:0;font-size:14px;background:#383030;color:#ffbdbd;border-color:#826161;}
+.project-start-actions {flex-wrap:wrap;}
 .reconnect-asset {
   width: calc(100% - 12px);
   margin: 0 6px 6px;

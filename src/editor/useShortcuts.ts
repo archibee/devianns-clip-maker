@@ -30,7 +30,17 @@ export function useShortcuts({
   cutBlocks: () => boolean;
 }) {
   useEffect(() => {
+    const spaceHandler=(e:KeyboardEvent)=>{
+      if((e.code!=='Space'&&e.key!==' ')||locked||modal||e.isComposing||e.ctrlKey||e.metaKey||e.altKey)return;
+      const target=e.target instanceof Element?e.target:null;
+      if(!target||target.closest('textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="dialog"]'))return;
+      const input=target.closest('input');
+      if(input&&input.type!=='range'&&input.type!=='button'&&input.type!=='submit'&&input.type!=='reset')return;
+      e.preventDefault();e.stopPropagation();
+      if(!e.repeat)toggle();
+    };
     const handler = (e: KeyboardEvent) => {
+      if(e.code==='Space'||e.key===' ')return;
       const target = e.target as HTMLElement;
       if (
         locked ||
@@ -67,10 +77,7 @@ export function useShortcuts({
         if (e.shiftKey) redo();
         else undo();
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (e.code === 'Space') {
-          e.preventDefault();
-          if (!e.repeat) toggle();
-        } else if (e.key === 'ArrowLeft') {
+        if (e.key === 'ArrowLeft') {
           e.preventDefault();
           seekFrame(-1);
         } else if (e.key === 'ArrowRight') {
@@ -92,8 +99,9 @@ export function useShortcuts({
         }
       }
     };
+    window.addEventListener('keydown',spaceHandler,true);
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    return () => {window.removeEventListener('keydown',spaceHandler,true);window.removeEventListener('keydown', handler);};
   }, [
     locked,
     modal,

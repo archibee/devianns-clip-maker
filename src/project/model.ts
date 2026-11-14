@@ -89,6 +89,7 @@ export const emptyProject = (): Project => ({
   subtitles: [],
 });
 export const clipDuration = (clip: Clip) => clip.outUs - clip.inUs;
+export const clipUsesAsset=(clip:Clip,assetId:string)=>clip.assetId===assetId||(clip.parts??[]).some(part=>part.assetId===assetId);
 export const duration = (project: Project) =>
   Math.max(0, ...layout(project).map((c) => c.endUs), ...project.subtitles.map((c) => c.endUs));
 export const frameTime = (n: number, fps: Fps) => Math.round((n * 1_000_000) / fps);
