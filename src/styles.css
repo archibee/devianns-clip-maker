@@ -156,7 +156,7 @@ small {
   min-height: 38px;
   display: flex;
   align-items: center;
-  gap: 26px;
+  gap: 12px;
   padding: 2px 22px;
   background: #1a1a1a;
   border-bottom: 1px solid var(--line);
@@ -165,7 +165,9 @@ small {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 230px;
+  min-width: 0;
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: 14px;
   letter-spacing: 1px;
 }
@@ -1636,7 +1638,6 @@ small {
     padding: 0 14px;
   }
   .brand {
-    min-width: 195px;
     font-size: 12px;
   }
   .project-name {
@@ -1766,7 +1767,6 @@ small {
   }
   .brand {
     font-size: 10px;
-    min-width: 150px;
   }
   .brand small {
     font-size: 7px;

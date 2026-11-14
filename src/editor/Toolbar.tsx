@@ -29,9 +29,6 @@ export function Toolbar(p: Props) {
           disabled={p.locked}
           onChange={(e) => p.onName(e.target.value)}
         />
-        <span className="local-badge">
-          <i /> 로컬 작업
-        </span>
       </div>
       <nav aria-label="프로젝트 도구">
         <button disabled={p.locked} onClick={p.onOpen}>
