@@ -1,0 +1,90 @@
+/* Desktop rules stay in styles.css. Keep breakpoints aligned with responsive-touch.ts. */
+@media (max-width: 1150px) {
+  html, body { touch-action: pan-x pan-y; }
+  .app-shell { height: auto; min-height: 100dvh; overflow: visible; }
+  .toolbar { flex-wrap: wrap; gap: 6px 12px; padding: 6px max(10px, env(safe-area-inset-left)); }
+  .brand { flex: 1; font-size: 13px; }
+  .project-name { order: 2; flex: 1; min-width: 120px; }
+  .project-name input { width: 100%; }
+  .toolbar nav { order: 3; width: 100%; margin: 0; flex-wrap: wrap; gap: 4px; }
+  button, .button, .toolbar nav button, .timeline-tools button {
+    min-height: 38px; padding: 7px 10px; font-size: 12px;
+  }
+  input:not([type='checkbox']):not([type='range']), select, textarea {
+    font-size: 16px; min-height: 38px;
+  }
+  input[type='range'] { height: 34px; }
+  input[type='checkbox'] { width: 20px; height: 20px; vertical-align: middle; }
+  .workspace { flex: none; min-height: 0; gap: 10px; padding: 10px; }
+  .panel-title { height: auto; min-height: 42px; flex-shrink: 0; padding: 5px 10px; gap: 6px; }
+  .panel-actions { min-width: 0; }
+  .preview-panel .panel-title { flex-wrap: wrap; }
+  .preview-panel .quality-badge { display: none; }
+  .preview-stage { min-height: 0; padding: 16px; }
+  .transport { height: auto; min-height: 52px; gap: 6px; flex-wrap: wrap; padding: 6px 10px; }
+  .transport-buttons button, .transport-buttons .play-button { min-height: 38px; min-width: 38px; }
+  .timeline-panel .panel-title { height: auto; min-height: 42px; flex-wrap: wrap; padding: 6px 10px; }
+  .timeline-panel .panel-actions { flex-basis: 100%; justify-content: flex-start; overflow: hidden; }
+  .timeline-tools { flex: 1; -webkit-overflow-scrolling: touch; }
+  .timeline-tools button { flex-shrink: 0; }
+  .zoom-control { flex-shrink: 0; margin-left: auto; }
+  .timeline-scroll, .asset-list, .inspector-body { -webkit-overflow-scrolling: touch; }
+  .clip-mute { min-width: 28px; min-height: 23px; padding: 0; }
+  .asset-card .add-asset, .asset-card .remove-asset { width: 32px; height: 32px; min-height: 32px; padding: 0; }
+  .asset-card .add-asset { right: 40px; }
+  .asset-card .remove-asset { right: 4px; }
+  .asset-thumb { max-height: 130px; }
+  .inspector-panel { max-height: none; }
+  .inspector-body { min-height: 0; }
+  .cue-quick-editor textarea { font-size: 16px; }
+  .resize-handle { min-width: 18px; min-height: 18px; }
+  .modal-backdrop { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); }
+  .dialog { padding: 16px; max-height: calc(100dvh - 24px); max-width: 100%; }
+  .dialog-footer { flex-wrap: wrap; gap: 8px; }
+  .statusbar { height: auto; min-height: 35px; flex-wrap: wrap; padding: 8px 10px; }
+}
+
+/* Tablet: editing surface beside the library, then timeline and properties. */
+@media (min-width: 601px) and (max-width: 1150px) {
+  .workspace {
+    grid-template-columns: minmax(170px, 1fr) minmax(0, 3fr);
+    grid-template-rows: clamp(320px, 52dvh, 540px) 280px 360px;
+  }
+  .asset-panel { grid-column: 1; grid-row: 1; }
+  .preview-panel { grid-column: 2; grid-row: 1; }
+  .timeline-panel { grid-column: 1 / -1; grid-row: 2; }
+  .inspector-panel { grid-column: 1 / -1; grid-row: 3; }
+  .asset-list { grid-template-columns: 1fr; }
+}
+
+/* Mobile: preview first; page scrolling exposes every editing panel. */
+@media (max-width: 600px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: clamp(300px, 55dvh, 440px) 290px 380px 320px;
+    padding: 6px; gap: 8px;
+  }
+  .preview-panel { grid-column: 1; grid-row: 1; }
+  .timeline-panel { grid-column: 1; grid-row: 2; }
+  .inspector-panel { grid-column: 1; grid-row: 3; }
+  .asset-panel { grid-column: 1; grid-row: 4; }
+  .brand { flex-basis: 100%; }
+  .project-name { flex-basis: 100%; }
+  .toolbar nav button { flex: 1 0 auto; }
+  .toolbar nav .divider { display: none; }
+  .preview-panel .panel-actions { margin-left: auto; }
+  .preview-panel .panel-actions button { padding: 7px; font-size: 11px; }
+  .transport { justify-content: center; }
+  .timecode { flex-basis: 100%; text-align: center; font-size: 12px; }
+  .transport-buttons { margin: 0 auto; }
+  .timeline-panel .panel-actions { flex-wrap: wrap; gap: 4px; }
+  .timeline-tools { flex-basis: 100%; }
+  .timeline-tools button { font-size: 12px; }
+  .zoom-control input { width: 90px; }
+  .asset-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .field-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .help-steps, .help-timeline-grid { grid-template-columns: 1fr; }
+  .dialog > header { gap: 8px; margin-bottom: 12px; }
+  .dialog h2 { font-size: 16px; }
+  .dialog-footer > button { flex: 1 0 auto; }
+}
