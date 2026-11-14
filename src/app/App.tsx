@@ -37,6 +37,7 @@ import {
   type Project,
 } from '../project/model';
 import { parseProject } from '../project/validation';
+import { selectLineBlocks, timelineBlocks } from '../project/timeline-selection';
 import { autosave, recover, saveProject } from '../storage/project-storage';
 
 const AutoCutDialog = lazy(() => import('../../modules/speech-auto-cut/src/AutoCutDialog'));
@@ -289,34 +290,22 @@ export function App() {
     return true;
   }
   function selectAll() {
-    if (
-      (inspectorTab === 'subtitle' || !selectedIds.length) &&
-      selectedCueIds.some((id) => project.subtitles.some((c) => c.id === id))
-    ) {
-      playback.pause();
-      const ids = project.subtitles
-        .filter((c) => cueLane(c) === Math.min(activeLane, laneCount(project) - 1))
-        .map((c) => c.id);
-      setSelectedCueIds(ids);
-      setSelectedCue(ids.length === 1 ? ids[0] : undefined);
-      setSelectedIds([]);
-      setSelected(undefined);
-      setInspectorTab('subtitle');
-      return true;
-    }
-    if (project.clips.some((c) => selectedIds.includes(c.id) || c.id === selected)) {
-      playback.pause();
-      const ids = project.clips
-        .filter((c) => clipLane(c) === Math.min(activeLane, laneCount(project) - 1))
-        .map((c) => c.id);
-      setSelectedIds(ids);
-      setSelected(selected && ids.includes(selected) ? selected : ids.at(-1));
-      setSelectedCueIds([]);
-      setSelectedCue(undefined);
-      setInspectorTab('clip');
-      return true;
-    }
-    return false;
+    const blocks = selectLineBlocks(
+      timelineBlocks(project),
+      Math.min(activeLane, laneCount(project) - 1),
+      [...selectedIds, ...selectedCueIds],
+    );
+    if (!blocks.length) return false;
+    playback.pause();
+    const clips = blocks.filter((b) => b.kind === 'video').map((b) => b.id),
+      cues = blocks.filter((b) => b.kind === 'subtitle').map((b) => b.id);
+    setSelectedIds(clips);
+    setSelected(selected && clips.includes(selected) ? selected : clips.at(-1));
+    setSelectedCueIds(cues);
+    setSelectedCue(cues.length === 1 ? cues[0] : undefined);
+    if (!cues.length) setInspectorTab('clip');
+    else if (!clips.length) setInspectorTab('subtitle');
+    return true;
   }
   function pasteCue() {
     const copied = cueClipboard.current;

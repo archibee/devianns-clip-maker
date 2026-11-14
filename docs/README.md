@@ -42,6 +42,7 @@
 - [timeline_upgrade_v5.md](./timeline/timeline_upgrade_v5.md)
 - [timeline_upgrade_v6.md](./timeline/timeline_upgrade_v6.md)
 - [timeline_upgrade_v7.md](./timeline/timeline_upgrade_v7.md)
+- [timeline_upgrade_v8.md](./timeline/timeline_upgrade_v8.md)
 
 ## 기본 문서
 
