@@ -18,7 +18,7 @@
 
 ### 자막 선택·조작 경로 누락
 
-수정 전 [Timeline.tsx](./src/editor/Timeline.tsx)의 자막 레인은 표시용 span만 생성했다. 클릭·포커스·드래그·트림 처리와 선택 속성이 없었다.
+수정 전 [Timeline.tsx](../../src/editor/Timeline.tsx)의 자막 레인은 표시용 span만 생성했다. 클릭·포커스·드래그·트림 처리와 선택 속성이 없었다.
 
 ```tsx
 <span style={{ left: ..., width: ... }} title={c.text}>
@@ -26,11 +26,11 @@
 </span>
 ```
 
-[Inspector.tsx](./src/editor/Inspector.tsx)는 cueId를 로컬 상태로만 보관했고 [App.tsx](./src/app/App.tsx)는 영상 선택만 관리했다. 타임라인 선택을 기존 속성 패널이나 공통 삭제 명령에 연결할 경로가 없었다. 실제 브라우저에서 자막 요소의 role/tabindex/aria-pressed가 모두 없음을 확인했다. [수정 전 기록](./docs/validation/v2-before.json)
+[Inspector.tsx](../../src/editor/Inspector.tsx)는 cueId를 로컬 상태로만 보관했고 [App.tsx](../../src/app/App.tsx)는 영상 선택만 관리했다. 타임라인 선택을 기존 속성 패널이나 공통 삭제 명령에 연결할 경로가 없었다. 실제 브라우저에서 자막 요소의 role/tabindex/aria-pressed가 모두 없음을 확인했다. [수정 전 기록](../validation/v2-before.json)
 
 ### 분할·삭제·단축키의 대상 제한
 
-[commands.ts](./src/project/commands.ts)의 기존 split은 clips만 변경했다. 영상 경계에서는 즉시 반환해 그 위치를 가로지르는 자막도 분할되지 않았다.
+[commands.ts](../../src/project/commands.ts)의 기존 split은 clips만 변경했다. 영상 경계에서는 즉시 반환해 그 위치를 가로지르는 자막도 분할되지 않았다.
 
 ```ts
 const item = resolve(project, timeUs);
@@ -38,11 +38,11 @@ if (!item || item.sourceUs <= item.clip.inUs || item.sourceUs >= item.clip.outUs
 // clips만 변경, subtitles는 유지
 ```
 
-App의 공통 삭제는 영상 ID에 대해서만 delete를 보냈고, 자막 삭제는 Inspector 내부 버튼에만 연결되어 있었다. [useShortcuts.ts](./src/editor/useShortcuts.ts)는 S/Delete 등을 처리했지만 숫자 1·2는 처리하지 않았다.
+App의 공통 삭제는 영상 ID에 대해서만 delete를 보냈고, 자막 삭제는 Inspector 내부 버튼에만 연결되어 있었다. [useShortcuts.ts](../../src/editor/useShortcuts.ts)는 S/Delete 등을 처리했지만 숫자 1·2는 처리하지 않았다.
 
 ### 오디오 상태에 묶인 재생과 첫 프레임 대기 누락
 
-[PlaybackService](./src/playback/service.ts)의 기존 재생은 무음 여부와 관계없이 다음 경로를 실행했다.
+[PlaybackService](../../src/playback/service.ts)의 기존 재생은 무음 여부와 관계없이 다음 경로를 실행했다.
 
 ```ts
 this.audio ??= new AudioContext({ sampleRate: AUDIO_RATE });
@@ -58,7 +58,7 @@ await this.audio.resume();
 - resume이 끝나지 않을 때 시작 대기에 제한 시간이 없었다. 오래된 시작 요청의 catch도 이후 재생을 정지시킬 수 있었다.
 - Worker의 첫 프레임 확인 전에 재생 시계를 시작했다. 초기 폰트·디코딩이 늦으면 화면이 비어 있는데 시간만 진행할 수 있었다.
 
-오디오 조건과 수정 전 상태는 [v2-playback-before.json](./docs/validation/v2-playback-before.json)에 보관한다. 이는 실제 브라우저의 제어된 재현 조건이며 물리적 장치 고장을 측정한 결과는 아니다.
+오디오 조건과 수정 전 상태는 [v2-playback-before.json](../validation/v2-playback-before.json)에 보관한다. 이는 실제 브라우저의 제어된 재현 조건이며 물리적 장치 고장을 측정한 결과는 아니다.
 
 ## 반영된 개선
 
@@ -70,7 +70,7 @@ App에서 영상 선택·자막 선택·속성 탭을 관리하며 선택 종류
 
 ### 자막 이동·길이 조절·붙여넣기
 
-새 [SubtitleBlock.tsx](./src/editor/SubtitleBlock.tsx)가 포인터 캡처·선택·드래그 초안·양끝 핸들을 담당한다. [subtitles.ts](./src/project/subtitles.ts)는 시간 후보·스냅·유효성 검사를 담당한다.
+새 [SubtitleBlock.tsx](../../src/editor/SubtitleBlock.tsx)가 포인터 캡처·선택·드래그 초안·양끝 핸들을 담당한다. [subtitles.ts](../../src/project/subtitles.ts)는 시간 후보·스냅·유효성 검사를 담당한다.
 
 - 본문 드래그는 길이·내용·스타일을 유지하고 시작/끝을 함께 이동한다.
 - 양끝 핸들 또는 기존 속성 패널의 초 입력으로 길이를 변경한다.
@@ -146,7 +146,7 @@ v2 검사는 필요한 빨강/파랑/무음 합성 영상을 직접 생성한다
 | 미리보기/출력 | 자막 포함 네 시점 비교, 160×90 공통 크기 RGB 평균 절대 오차 약 0.789–1.059/255 |
 | 정적 실행 | 루트와 /devianns-clip-maker/에서 Worker·폰트·실제 MP4/AAC 출력 통과 |
 
-v2 실제 브라우저 검사 10항목은 [v2-report.json](./docs/validation/v2-report.json), 정적 실행은 [v2-production-report.json](./docs/validation/v2-production-report.json)에 보관한다. 환경은 Windows headless Edge 157이며 v2 검사에 자동재생 제한 해제 플래그를 사용하지 않았다. 입력은 2초 합성 파일이고 편집 프로젝트는 4초다. 비교는 편집 결과의 일치를 확인한 것이며 손실 코덱의 픽셀 동일성을 보장하지 않는다.
+v2 실제 브라우저 검사 10항목은 [v2-report.json](../validation/v2-report.json), 정적 실행은 [v2-production-report.json](../validation/v2-production-report.json)에 보관한다. 환경은 Windows headless Edge 157이며 v2 검사에 자동재생 제한 해제 플래그를 사용하지 않았다. 입력은 2초 합성 파일이고 편집 프로젝트는 4초다. 비교는 편집 결과의 일치를 확인한 것이며 손실 코덱의 픽셀 동일성을 보장하지 않는다.
 
 ### 범위와 한계
 

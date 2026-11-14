@@ -99,7 +99,7 @@ UI는 미디어 엔진을 직접 다루지 않고 프로젝트 명령 및 재생
 
 ## 정적 배포
 
-`npm run build` 결과인 `dist/`만 호스팅하면 됩니다. 서버 API나 COOP/COEP 설정은 필수 조건이 아닙니다. 저장소의 Pages 설정에서 **GitHub Actions**를 배포 소스로 선택하면 [workflow](./.github/workflows/pages.yml)가 main push 시 검사·빌드·배포하도록 준비되어 있습니다. 실제 공개 사이트에 대한 수정 반영은 새 빌드의 재배포 후 확인해야 합니다.
+`npm run build` 결과인 `dist/`만 호스팅하면 됩니다. 서버 API나 COOP/COEP 설정은 필수 조건이 아닙니다. 저장소의 Pages 설정에서 **GitHub Actions**를 배포 소스로 선택하면 [workflow](.github/workflows/pages.yml)가 main push 시 검사·빌드·배포하도록 준비되어 있습니다. 실제 공개 사이트에 대한 수정 반영은 새 빌드의 재배포 후 확인해야 합니다.
 
 기본 Vite `base`는 `./`입니다. 특정 저장소 이름에 고정하지 않아 같은 빌드가 루트 도메인과 저장소 하위 경로에서 동작합니다. 폰트도 Vite의 asset URL 처리로 Worker 위치를 기준으로 올바르게 읽습니다. 기본 구현은 runtime CDN과 서버 rewrite에 의존하지 않습니다. 소스 루트의 `index.html`은 Vite 개발 진입점이므로 빌드 없이 그대로 배포하는 파일이 아닙니다.
 
@@ -107,8 +107,9 @@ UI는 미디어 엔진을 직접 다루지 않고 프로젝트 명령 및 재생
 
 | 문서 | 역할 |
 | --- | --- |
+| [버전별 요구사항 문서](./docs/README.md) | 기능별 체크리스트·타임라인·미디어·메타데이터·PWA 변경 요구사항 |
 | [CHECKLIST.md](./CHECKLIST.md) | 순서가 고정된 36개 구현/검증 항목. 완료 표기 `[v]`만 변경 |
-| [checklist_v2.md](./checklist_v2.md) | 자막 블록 편집·동시 분할·재생·숫자 단축키 개선 및 문제 코드·검증 기록 |
+| [checklist_v2.md](./docs/checklists/checklist_v2.md) | 자막 블록 편집·동시 분할·재생·숫자 단축키 개선 및 문제 코드·검증 기록 |
 | [STRUCTURE.md](./STRUCTURE.md) | 전체 설계, UI 계약, 데이터·시간·메모리 정책, 공식 출처 |
 | [AGENTS.md](./AGENTS.md) | 다음 작업자의 구현·검증·인수인계 지침 |
 | [IMPLEMENTATION.md](./IMPLEMENTATION.md) | 구현 결정, 실측, 알려진 한계와 남은 작업 |
