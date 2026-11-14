@@ -70,14 +70,22 @@ export function App() {
   const [message, setMessage] = useState<string>();
   const dismissMessage = useCallback(() => setMessage(undefined), []);
   const [notice, setNotice] = useState('영상 파일은 서버로 전송되지 않습니다.');
-  const [modal, setModal] = useState<'export' | 'help' | 'recover' | 'autoCut'>();
+  const [modal, setModal] = useState<'export' | 'help' | 'recover' | 'autoCut' | 'deleteLane'>();
+  const [autoCutTarget, setAutoCutTarget] = useState<string>();
+  const [deleteLaneRequest, setDeleteLaneRequest] = useState<{
+    lane: number;
+    project: Project;
+    videos: number;
+    cues: number;
+  }>();
   const [recovery, setRecovery] = useState<Project>();
   const [restoreReady, setRestoreReady] = useState(false);
   const [registryVersion, setRegistryVersion] = useState(0);
   const projectPicker = useRef<HTMLInputElement>(null);
   const reconnectPicker = useRef<HTMLInputElement>(null);
   const reconnectAsset = useRef<Asset | undefined>(undefined);
-  const locked = exportState.status === 'running' || importing || modal === 'autoCut';
+  const locked =
+    exportState.status === 'running' || importing || modal === 'autoCut' || modal === 'deleteLane';
   const lockedRef = useRef(locked);
   lockedRef.current = locked;
   const supported =
@@ -87,9 +95,9 @@ export function App() {
   const autoCutReason = useMemo(
     () =>
       supported
-        ? autoCutUnavailable(project, registry)
+        ? autoCutUnavailable(project, registry, selectedIds)
         : '이 브라우저는 음성 분석을 지원하지 않습니다.',
-    [supported, project, registry, registryVersion],
+    [supported, project, registry, registryVersion, selectedIds],
   );
   function act(action: HistoryAction) {
     if (lockedRef.current) return false;
@@ -143,7 +151,7 @@ export function App() {
     });
     playback.pause();
     historyRef.current = next;
-    pendingSeek.current = 0;
+    pendingSeek.current = layout(current).find((r) => r.clip.id === autoCutTarget)?.startUs ?? 0;
     cueClipboard.current = undefined;
     setHistory(next);
     setSelected(undefined);
@@ -157,6 +165,41 @@ export function App() {
   }
   function split() {
     command({ type: 'split', timeUs: playState.timeUs });
+  }
+  function deleteLane() {
+    if (lockedRef.current) return;
+    const current = historyRef.current.present,
+      lane = Math.min(activeLane, laneCount(current) - 1);
+    const videos = current.clips.filter((c) => clipLane(c) === lane).length,
+      cues = current.subtitles.filter((c) => cueLane(c) === lane).length;
+    if (videos || cues) {
+      playback.pause();
+      setMessage(undefined);
+      setDeleteLaneRequest({ lane, project: current, videos, cues });
+      setModal('deleteLane');
+    } else if (command({ type: 'deleteLane', lane }))
+      setActiveLane(Math.min(lane, Math.max(0, laneCount(current) - 2)));
+  }
+  function confirmDeleteLane() {
+    const request = deleteLaneRequest;
+    if (modal !== 'deleteLane' || !request) return;
+    try {
+      if (historyRef.current.present !== request.project)
+        throw new Error('프로젝트가 변경됐습니다. 취소하고 라인 삭제를 다시 실행하세요.');
+      const next = historyReducer(historyRef.current, {
+        type: 'command',
+        command: { type: 'deleteLane', lane: request.lane },
+      });
+      playback.pause();
+      historyRef.current = next;
+      setHistory(next);
+      setActiveLane(Math.min(request.lane, laneCount(next.present) - 1));
+      setModal(undefined);
+      setDeleteLaneRequest(undefined);
+      setMessage(undefined);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    }
   }
   function merge() {
     if (selectedCue || selectedIds.length < 2) return;
@@ -566,13 +609,15 @@ export function App() {
           onSeek={(us) => playback.seek(us)}
         />
         <Timeline
+          onDeleteLane={deleteLane}
           activeLane={Math.min(activeLane, laneCount(project) - 1)}
           onLaneChange={setActiveLane}
           selectedCueIds={selectedCueIds}
           autoCutUnavailable={autoCutReason}
           onAutoCut={() => {
-            if (!locked && !autoCutUnavailable(project, registry)) {
+            if (!locked && !autoCutUnavailable(project, registry, selectedIds)) {
               playback.pause();
+              setAutoCutTarget(selectedIds[0]);
               setModal('autoCut');
             }
           }}
@@ -614,6 +659,7 @@ export function App() {
         <AutoCutBoundary onCancel={() => setModal(undefined)}>
           <Suspense fallback={<AutoCutPending onCancel={() => setModal(undefined)} />}>
             <AutoCutDialog
+              targetId={autoCutTarget!}
               project={project}
               registry={registry}
               onCancel={() => setModal(undefined)}
@@ -632,6 +678,39 @@ export function App() {
         />
       )}
       {modal === 'help' && <HelpDialog onClose={() => setModal(undefined)} />}
+      {modal === 'deleteLane' && deleteLaneRequest && (
+        <Dialog
+          title={`라인 T${deleteLaneRequest.lane + 1} 삭제`}
+          onClose={() => {
+            setModal(undefined);
+            setDeleteLaneRequest(undefined);
+          }}
+        >
+          <p>
+            이 라인에는 영상 블록 {deleteLaneRequest.videos}개, 자막 블록 {deleteLaneRequest.cues}
+            개가 있습니다. 포함된 블록과 라인을 삭제하시겠습니까?
+          </p>
+          <p>다른 라인의 블록 시간은 유지되며 실행 취소로 복구할 수 있습니다.</p>
+          {message && (
+            <p className="inline-error" role="alert">
+              {message}
+            </p>
+          )}
+          <footer className="dialog-footer">
+            <button
+              onClick={() => {
+                setModal(undefined);
+                setDeleteLaneRequest(undefined);
+              }}
+            >
+              취소
+            </button>
+            <button className="danger" onClick={confirmDeleteLane}>
+              확인 · 라인 삭제
+            </button>
+          </footer>
+        </Dialog>
+      )}
       {modal === 'recover' && (
         <Dialog
           title="이전 편집을 복구할까요?"

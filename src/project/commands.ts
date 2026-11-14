@@ -22,6 +22,7 @@ export type Command =
   | { type: 'assets'; assets: Asset[] }
   | { type: 'insert'; assetId: string; index: number; lane?: number; timeUs?: number }
   | { type: 'addLane' }
+  | { type: 'deleteLane'; lane: number }
   | { type: 'placeBlock'; id: string; lane: number; timeUs: number }
   | { type: 'deleteBlocks'; ids: string[] }
   | { type: 'pasteBlocks'; clips: Clip[]; cues: Cue[]; timeUs: number; lane: number }
@@ -45,6 +46,27 @@ export type Command =
 export function applyCommand(p: Project, cmd: Command): Project {
   let result = p;
   switch (cmd.type) {
+    case 'deleteLane': {
+      if (!Number.isInteger(cmd.lane) || cmd.lane < 0 || cmd.lane >= laneCount(p))
+        throw new Error('삭제할 라인이 없습니다.');
+      result = parseProject(
+        JSON.stringify({
+          ...p,
+          laneCount: Math.max(1, laneCount(p) - 1),
+          clips: layout(p)
+            .filter((r) => clipLane(r.clip) !== cmd.lane)
+            .map((r) => ({
+              ...r.clip,
+              startUs: r.startUs,
+              lane: clipLane(r.clip) - (clipLane(r.clip) > cmd.lane ? 1 : 0),
+            })),
+          subtitles: p.subtitles
+            .filter((c) => cueLane(c) !== cmd.lane)
+            .map((c) => ({ ...c, lane: cueLane(c) - (cueLane(c) > cmd.lane ? 1 : 0) })),
+        }),
+      );
+      break;
+    }
     case 'addLane':
       if (laneCount(p) >= 32) throw new Error('타임라인은 최대 32행까지 추가할 수 있습니다.');
       result = { ...p, laneCount: laneCount(p) + 1 };

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Project } from '../../../src/project/model';
-import { duration, seconds, timecode } from '../../../src/project/model';
+import { duration, layout, seconds, timecode } from '../../../src/project/model';
 import type { MediaRegistry } from '../../../src/media/registry';
 import {
   PRESETS,
@@ -13,11 +13,12 @@ import {
   type Progress,
 } from './contracts';
 import { AnalysisClient } from './client';
-import { buildProject, removals, union } from './cut-plan';
+import { buildProject, selectionProject, removals, union } from './cut-plan';
 import { AutoCutPreview } from './Preview';
 import './style.css';
 
 type Props = {
+  targetId: string;
   project: Project;
   registry: MediaRegistry;
   onCancel: () => void;
@@ -34,6 +35,9 @@ const fields: { key: keyof Options; label: string; min: number; max: number; ste
 ];
 export default function AutoCutDialog(p: Props) {
   const [snapshot] = useState(() => p.project);
+  const [targetId] = useState(p.targetId);
+  const scope = useMemo(() => selectionProject(snapshot, targetId), [snapshot, targetId]);
+  const targetStart = layout(snapshot).find((r) => r.clip.id === targetId)?.startUs ?? 0;
   const [client] = useState(() => new AnalysisClient());
   const [options, setOptions] = useState<Options>({ ...DEFAULT_OPTIONS });
   const [preset, setPreset] = useState('medium');
@@ -46,7 +50,6 @@ export default function AutoCutDialog(p: Props) {
     progress: 0,
   });
   const [error, setError] = useState<string>();
-  const [dropSubtitles, setDropSubtitles] = useState(false);
   const [generateSubtitles, setGenerateSubtitles] = useState(false);
   const [previewMode, setPreviewMode] = useState<'original' | 'result'>('original');
   const [seekUs, setSeekUs] = useState(0);
@@ -57,8 +60,8 @@ export default function AutoCutDialog(p: Props) {
   const busy = status === 'analyzing' || status === 'applying';
   const issue = optionsError(options);
   const removed = useMemo(
-    () => (analysis ? removals(snapshot, analysis.keep) : []),
-    [snapshot, analysis],
+    () => (analysis ? removals(scope, analysis.keep) : []),
+    [scope, analysis],
   );
   const keep = useMemo(
     () =>
@@ -70,11 +73,27 @@ export default function AutoCutDialog(p: Props) {
   const candidate = useMemo(() => {
     if (!analysis) return { project: undefined, error: undefined };
     try {
-      return { project: buildProject(snapshot, keep, true, generateSubtitles), error: undefined };
+      return {
+        project: buildProject(snapshot, targetId, keep, generateSubtitles),
+        error: undefined,
+      };
     } catch (error) {
       return { project: undefined, error: error instanceof Error ? error.message : String(error) };
     }
-  }, [snapshot, analysis, keep, generateSubtitles]);
+  }, [snapshot, targetId, analysis, keep, generateSubtitles]);
+  const resultPreview = useMemo(() => {
+    if (!candidate.project) return undefined;
+    const oldIds = new Set([...snapshot.clips, ...snapshot.subtitles].map((c) => c.id));
+    return {
+      ...candidate.project,
+      clips: candidate.project.clips
+        .filter((c) => !oldIds.has(c.id))
+        .map((c) => ({ ...c, startUs: c.startUs! - targetStart })),
+      subtitles: candidate.project.subtitles
+        .filter((c) => !oldIds.has(c.id))
+        .map((c) => ({ ...c, startUs: c.startUs - targetStart, endUs: c.endUs - targetStart })),
+    };
+  }, [snapshot, candidate.project, targetStart]);
   useEffect(() => {
     section.current?.focus();
     return () => {
@@ -108,7 +127,7 @@ export default function AutoCutDialog(p: Props) {
     try {
       const result = await client.run(
         {
-          project: snapshot,
+          project: scope,
           files: p.registry.files(),
           options: { ...options },
           assetBase: new URL(`${import.meta.env.BASE_URL}speech-auto-cut/`, document.baseURI).href,
@@ -136,16 +155,12 @@ export default function AutoCutDialog(p: Props) {
   }
   async function apply() {
     if (status !== 'ready' || !analysis || !candidate.project || issue) return;
-    if (snapshot.subtitles.length && !dropSubtitles) {
-      setError('기존 자막 제외에 동의해야 완료할 수 있습니다.');
-      return;
-    }
     setStatus('applying');
     setError(undefined);
     setProgress({ stage: '최종 컷 검증 및 타임라인 적용 중', progress: 0.98 });
     await new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
     try {
-      const result = buildProject(snapshot, keep, dropSubtitles, generateSubtitles);
+      const result = buildProject(snapshot, targetId, keep, generateSubtitles);
       p.onApply(snapshot, result);
     } catch (error) {
       setStatus('ready');
@@ -224,7 +239,7 @@ export default function AutoCutDialog(p: Props) {
       >
         <header>
           <h2 id="auto-cut-title">Auto Cut · 음성 기반 자동 컷편집</h2>
-          <p>프리셋 선택 → 분석 → 결과 확인 → 완료</p>
+          <p>선택 영상 블록만 분석 → 결과 확인 → 완료 · 다른 블록의 시간은 유지됩니다.</p>
         </header>
         <div className="auto-cut-presets">
           <div className="auto-cut-preset-card">
@@ -353,17 +368,17 @@ export default function AutoCutDialog(p: Props) {
               <div className="auto-cut-summary">
                 <span>
                   <small>원본 길이</small>
-                  <strong>{seconds(duration(snapshot)).toFixed(2)}초</strong>
+                  <strong>{seconds(duration(scope)).toFixed(2)}초</strong>
                 </span>
                 <span>
                   <small>결과 길이</small>
                   <strong>
-                    {seconds(candidate.project ? duration(candidate.project) : 0).toFixed(2)}초
+                    {seconds(resultPreview ? duration(resultPreview) : 0).toFixed(2)}초
                   </strong>
                 </span>
                 <span>
                   <small>영상 블록</small>
-                  <strong>{candidate.project?.clips.length ?? 0}개</strong>
+                  <strong>{resultPreview?.clips.length ?? 0}개</strong>
                 </span>
                 <span>
                   <small>삭제 후보</small>
@@ -394,7 +409,7 @@ export default function AutoCutDialog(p: Props) {
               </button>
             </div>
             <AutoCutPreview
-              project={previewMode === 'result' && candidate.project ? candidate.project : snapshot}
+              project={previewMode === 'result' && resultPreview ? resultPreview : scope}
               registry={p.registry}
               seekUs={seekUs}
               disabled={busy}
@@ -462,23 +477,11 @@ export default function AutoCutDialog(p: Props) {
                 disabled={busy}
                 onChange={(event) => setGenerateSubtitles(event.target.checked)}
               />
-              새 자막 자동 생성 · 영상 블록마다 같은 길이의 빈 자막을 추가합니다.
+              새 자막 자동 생성 · 항상 새 라인에 컷마다 같은 길이의 빈 자막을 추가합니다.
               {generateSubtitles && candidate.project && (
-                <span>({candidate.project.subtitles.length}개)</span>
+                <span>({candidate.project.subtitles.length - snapshot.subtitles.length}개)</span>
               )}
             </label>
-            {snapshot.subtitles.length > 0 && (
-              <label className="auto-cut-subtitle">
-                <input
-                  type="checkbox"
-                  checked={dropSubtitles}
-                  disabled={busy}
-                  onChange={(event) => setDropSubtitles(event.target.checked)}
-                />
-                기존 자막 {snapshot.subtitles.length}개를 제외하고 적용합니다. 기존 자막은 실행
-                취소로 복구할 수 있습니다.
-              </label>
-            )}
             <a
               href={`${import.meta.env.BASE_URL}speech-auto-cut/licenses.txt`}
               target="_blank"
@@ -494,12 +497,7 @@ export default function AutoCutDialog(p: Props) {
           </button>
           <button
             className="primary"
-            disabled={
-              status !== 'ready' ||
-              !candidate.project ||
-              !!issue ||
-              (snapshot.subtitles.length > 0 && !dropSubtitles)
-            }
+            disabled={status !== 'ready' || !candidate.project || !!issue}
             onClick={() => void apply()}
           >
             {status === 'applying' ? '적용 중…' : '완료 · 타임라인에 적용'}

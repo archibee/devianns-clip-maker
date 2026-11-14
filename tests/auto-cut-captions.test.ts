@@ -28,7 +28,7 @@ const keep = [
 ];
 it('최종 컷마다 빈 자막을 정확한 길이·기본 스타일로 만들고 원본은 변경하지 않는다', () => {
   const source = project(),
-    result = buildProject(source, keep, false, true);
+    result = buildProject(source, 'c', keep, true);
   expect(result.subtitles).toHaveLength(result.clips.length);
   expect(result.subtitles.map((q) => [q.startUs, q.endUs])).toEqual(
     layout(result).map((r) => [r.startUs, r.endUs]),
@@ -49,12 +49,12 @@ it('최종 컷마다 빈 자막을 정확한 길이·기본 스타일로 만들�
   expect(new Set(result.subtitles.map((q) => q.id)).size).toBe(2);
   expect(source.subtitles).toEqual([]);
   expect(source.clips).toHaveLength(1);
-  expect(buildProject(source, keep, false).subtitles).toEqual([]);
+  expect(buildProject(source, 'c', keep).subtitles).toEqual([]);
   expect(
-    buildProject(source, [{ startUs: 0, endUs: 3_500_000 }], false, true).subtitles,
+    buildProject(source, 'c', [{ startUs: 0, endUs: 3_500_000 }], true).subtitles,
   ).toHaveLength(1);
 });
-it('기존 자막 제외 동의를 유지하고 새 컷·자막을 한 번의 undo/redo로 복원한다', () => {
+it('기존 자막을 보존하고 새 컷·새 라인 자막을 한 번의 undo/redo로 복원한다', () => {
   const source = project();
   source.subtitles = [
     {
@@ -69,8 +69,10 @@ it('기존 자막 제외 동의를 유지하고 새 컷·자막을 한 번의 un
       y: 0.9,
     },
   ];
-  expect(() => buildProject(source, keep, false, true)).toThrow('동의');
-  const result = buildProject(source, keep, true, true);
+
+  const result = buildProject(source, 'c', keep, true);
+  expect(result.subtitles[0]).toEqual(source.subtitles[0]);
+  expect(result.subtitles.slice(1).every((c) => c.lane === 2)).toBe(true);
   const applied = historyReducer(initialHistory(source), {
     type: 'command',
     command: { type: 'replaceTimeline', clips: result.clips, subtitles: result.subtitles },

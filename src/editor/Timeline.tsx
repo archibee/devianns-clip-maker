@@ -18,6 +18,7 @@ import { SubtitleBlock } from './SubtitleBlock';
 type Props = {
   activeLane: number;
   onLaneChange: (lane: number) => void;
+  onDeleteLane: () => void;
   project: Project;
   timeUs: number;
   selected?: string;
@@ -160,7 +161,10 @@ export function Timeline(p: Props) {
               p.onLaneChange(laneCount(p.project));
             }}
           >
-            ＋ 행 추가
+            ＋ 라인 추가
+          </button>
+          <button disabled={p.locked} onClick={p.onDeleteLane}>
+            라인 삭제
           </button>
           <button
             disabled={p.locked || !!p.autoCutUnavailable}
@@ -172,19 +176,19 @@ export function Timeline(p: Props) {
           <button
             disabled={p.locked || !duration(p.project)}
             onClick={p.onSplit}
-            title="재생 위치에서 분할 (S)"
+            title="재생 위치에서 블록 분할 (1 / S)"
           >
-            ✂ 분할
+            ✂ 블록 분할
           </button>
           <button
             disabled={p.locked || (!p.selected && !p.selectedCueIds.length)}
             onClick={p.onDelete}
-            title="선택 클립 삭제 (Delete)"
+            title="선택 블록 삭제 (2 / Delete)"
           >
-            삭제
+            블록 삭제
           </button>
           <button disabled={p.locked || p.selectedIds.length < 2} onClick={p.onMerge}>
-            합치기
+            블록 합치기
           </button>
           <button
             aria-label="선택 클립 왼쪽 이동"

@@ -1,5 +1,6 @@
 import {
   mediaLayout,
+  layout,
   newId,
   clipLane,
   laneCount,
@@ -40,27 +41,31 @@ export function removals(project: Project, keep: Range[]): Range[] {
   }
   return union(result);
 }
+/** 분석과 모달 미리보기는 선택 블록 시작을 0초로 한 독립 범위를 사용한다. */
+export function selectionProject(project: Project, id: string): Project {
+  const row = layout(project).find((r) => r.clip.id === id);
+  if (!row) throw new Error('Auto Cut 대상 영상 블록이 없습니다.');
+  return { ...project, clips: [{ ...row.clip, startUs: 0 }], subtitles: [] };
+}
 export function buildProject(
   project: Project,
+  targetId: string,
   keep: Range[],
-  dropSubtitles: boolean,
   generateSubtitles = false,
 ): Project {
-  if (project.subtitles.length && !dropSubtitles)
-    throw new Error(
-      '기존 자막을 제외하는 데 동의해야 적용할 수 있습니다. 원래 자막은 실행 취소로 복구할 수 있습니다.',
-    );
-  const ranges = union(keep);
-  if (!project.clips.length) throw new Error('남길 영상이 없습니다.');
-  if (new Set(project.clips.map(clipLane)).size > 1)
-    throw new Error('Auto Cut은 단일 영상 행만 지원합니다.');
-  const videoLane = clipLane(project.clips[0]);
-  const subtitleLane = videoLane + 1;
+  const target = layout(project).find((r) => r.clip.id === targetId);
+  if (!target) throw new Error('Auto Cut 대상 영상 블록이 없습니다.');
+  const scope = selectionProject(project, targetId);
+  const ranges = union(keep),
+    videoLane = clipLane(target.clip),
+    subtitleLane = laneCount(project);
   if (generateSubtitles && subtitleLane >= 32)
-    throw new Error('자동 자막을 생성하려면 영상 행 아래에 자막 행을 추가할 공간이 필요합니다.');
+    throw new Error(
+      '새 자막 라인을 추가할 수 없습니다. 최대 32라인입니다. 자동 자막 생성을 끄거나 라인을 삭제하세요.',
+    );
   const clips: Clip[] = [];
-  let cursor = 0;
-  for (const row of mediaLayout(project))
+  let cursor = target.startUs;
+  for (const row of mediaLayout(scope))
     for (const range of ranges) {
       const start = Math.max(row.startUs, range.startUs),
         end = Math.min(row.endUs, range.endUs);
@@ -76,9 +81,7 @@ export function buildProject(
       });
       cursor += end - start;
       if (clips.length > 10000)
-        throw new Error(
-          '생성되는 컷이 너무 많습니다. 보존 강도 또는 최소 삭제 길이를 늘려 다시 분석하세요.',
-        );
+        throw new Error('생성되는 컷이 너무 많습니다. 분석 설정을 조절하세요.');
     }
   if (!clips.length) throw new Error('남길 영상이 없습니다. 후보를 보존하거나 다시 분석하세요.');
   const subtitles = generateSubtitles
@@ -94,15 +97,15 @@ export function buildProject(
         x: 0.5,
         y: 0.9,
       }))
-    : dropSubtitles
-      ? []
-      : project.subtitles;
+    : [];
   return parseProject(
     JSON.stringify({
       ...project,
-      laneCount: Math.max(laneCount(project), generateSubtitles ? subtitleLane + 1 : 1),
-      clips,
-      subtitles,
+      laneCount: subtitleLane + (generateSubtitles ? 1 : 0),
+      clips: layout(project).flatMap((r) =>
+        r.clip.id === targetId ? clips : [{ ...r.clip, startUs: r.startUs }],
+      ),
+      subtitles: [...project.subtitles, ...subtitles],
     }),
   );
 }

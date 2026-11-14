@@ -9,6 +9,9 @@ export async function startStaticTestServer(directory, mounts) {
   const types = {
     '.html': 'text/html; charset=utf-8',
     '.js': 'text/javascript',
+    '.mjs': 'text/javascript',
+    '.wasm': 'application/wasm',
+    '.json': 'application/json',
     '.css': 'text/css',
     '.ttf': 'font/ttf',
     '.txt': 'text/plain; charset=utf-8',
