@@ -1939,6 +1939,43 @@ small {
   overflow: visible;
   z-index: 4;
 }
+.move-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.move-guide {
+  position: absolute;
+  border-color: #ffffff66;
+  border-style: dashed;
+}
+.move-guide.vertical {
+  top: 0;
+  bottom: 0;
+  border-width: 0 0 0 1px;
+  transform: translateX(-0.5px);
+}
+.move-guide.horizontal {
+  left: 0;
+  right: 0;
+  border-width: 1px 0 0;
+  transform: translateY(-0.5px);
+}
+.move-guide.snapped {
+  border-color: var(--accent);
+  border-style: solid;
+  filter: drop-shadow(0 0 2px #000);
+}
+.move-center-mark {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: #202020;
+  transform: translate(-50%, -50%);
+}
 .tool-move {
   cursor: move;
 }

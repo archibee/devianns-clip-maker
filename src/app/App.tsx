@@ -294,7 +294,9 @@ export function App() {
       selectedCueIds.some((id) => project.subtitles.some((c) => c.id === id))
     ) {
       playback.pause();
-      const ids = project.subtitles.map((c) => c.id);
+      const ids = project.subtitles
+        .filter((c) => cueLane(c) === Math.min(activeLane, laneCount(project) - 1))
+        .map((c) => c.id);
       setSelectedCueIds(ids);
       setSelectedCue(ids.length === 1 ? ids[0] : undefined);
       setSelectedIds([]);
@@ -304,7 +306,9 @@ export function App() {
     }
     if (project.clips.some((c) => selectedIds.includes(c.id) || c.id === selected)) {
       playback.pause();
-      const ids = project.clips.map((c) => c.id);
+      const ids = project.clips
+        .filter((c) => clipLane(c) === Math.min(activeLane, laneCount(project) - 1))
+        .map((c) => c.id);
       setSelectedIds(ids);
       setSelected(selected && ids.includes(selected) ? selected : ids.at(-1));
       setSelectedCueIds([]);

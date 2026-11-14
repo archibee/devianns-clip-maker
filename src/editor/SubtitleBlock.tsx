@@ -2,8 +2,13 @@ import { useRef, useState, type PointerEvent } from 'react';
 import { seconds, toUs, cueLane, type Cue, type Project } from '../project/model';
 import { cueDragRange, validateCueRange, type CueGesture } from '../project/subtitles';
 import type { Command } from '../project/commands';
+import { useBlockDrag, type BlockDragPreview } from './useBlockDrag';
 
 type Props = {
+  selectedIds: string[];
+  dragPreview?: BlockDragPreview;
+  onDragPreview: (draft?: BlockDragPreview) => void;
+  onGestureChange: (active: boolean, moved?: boolean) => void;
   onLaneChange: (lane: number) => void;
   project: Project;
   cue: Cue;
@@ -15,6 +20,19 @@ type Props = {
   onCommand: (command: Command) => void;
 };
 export function SubtitleBlock(p: Props) {
+  const move = useBlockDrag({
+    project: p.project,
+    id: p.cue.id,
+    selectedIds: p.selectedIds,
+    zoom: p.zoom,
+    locked: p.locked,
+    onSelect: (additive) => p.onSelect(p.cue.id, additive),
+    onLaneChange: p.onLaneChange,
+    onCommand: p.onCommand,
+    onPreview: p.onDragPreview,
+    onGestureChange: p.onGestureChange,
+  });
+  const preview = p.dragPreview?.ids.includes(p.cue.id) ? p.dragPreview : undefined;
   const element = useRef<HTMLDivElement>(null);
   const pointerSelected = useRef(false);
   const gesture = useRef<{
@@ -25,8 +43,12 @@ export function SubtitleBlock(p: Props) {
     lane: number;
   } | null>(null);
   const [draft, setDraft] = useState<{ startUs: number; endUs: number; lane?: number }>();
-  const range = draft ?? p.cue;
-  let invalid = false;
+  const range =
+    draft ??
+    (preview
+      ? { startUs: p.cue.startUs + preview.deltaUs, endUs: p.cue.endUs + preview.deltaUs }
+      : p.cue);
+  let invalid = preview?.invalid ?? false;
   if (draft) {
     try {
       validateCueRange(p.project, { ...p.cue, ...draft });
@@ -39,7 +61,11 @@ export function SubtitleBlock(p: Props) {
     if (Math.abs(clientX - g.x) < 3) return { startUs: g.cue.startUs, endUs: g.cue.endUs };
     return cueDragRange(p.project, g.cue, g.mode, toUs((clientX - g.x) / p.zoom), toUs(6 / p.zoom));
   }
-  function begin(e: PointerEvent, mode: CueGesture) {
+  function begin(e: PointerEvent<HTMLElement>, mode: CueGesture) {
+    if (mode === 'move') {
+      move.events.onPointerDown(e);
+      return;
+    }
     if (p.locked || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
@@ -77,42 +103,42 @@ export function SubtitleBlock(p: Props) {
           pointerSelected.current = false;
           return;
         }
+        if (move.consumeClick()) return;
         if (!p.locked) p.onSelect(p.cue.id, e.ctrlKey || e.metaKey);
       }}
       style={{
         left: seconds(range.startUs) * p.zoom,
         width: Math.max(4, seconds(range.endUs - range.startUs) * p.zoom),
+        transform: preview ? `translateY(${preview.offsetY}px)` : undefined,
+        zIndex: preview ? 4 : undefined,
       }}
       onPointerDown={(e) => begin(e, 'move')}
       onPointerMove={(e) => {
         if (gesture.current?.pointerId === e.pointerId) {
-          if (gesture.current.mode === 'move') {
-            const row = document
-              .elementFromPoint(e.clientX, e.clientY)
-              ?.closest<HTMLElement>('[data-lane]');
-            if (row) gesture.current.lane = Number(row.dataset.lane);
-          }
           setDraft({ ...candidate(e.clientX), lane: gesture.current.lane });
-        }
+        } else move.events.onPointerMove(e);
       }}
       onPointerUp={(e) => {
         if (gesture.current?.pointerId === e.pointerId) {
           const result = candidate(e.clientX);
-          const g = gesture.current;
           clear();
-          if (g.mode === 'move') {
-            p.onLaneChange(g.lane);
-            p.onCommand({ type: 'placeBlock', id: p.cue.id, lane: g.lane, timeUs: result.startUs });
-          } else p.onCommand({ type: 'cueRange', id: p.cue.id, ...result });
-        }
+          p.onCommand({ type: 'cueRange', id: p.cue.id, ...result });
+        } else move.events.onPointerUp(e);
       }}
-      onPointerCancel={clear}
+      onPointerCancel={() => {
+        clear();
+        move.cancel();
+      }}
+      onLostPointerCapture={() => move.events.onLostPointerCapture()}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
           pointerSelected.current = false;
           p.onSelect(p.cue.id, e.ctrlKey || e.metaKey);
-        } else if (e.key === 'Escape') clear();
+        } else if (e.key === 'Escape') {
+          clear();
+          move.cancel();
+        }
       }}
     >
       <span className="subtitle-label">T {p.cue.text}</span>

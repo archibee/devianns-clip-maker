@@ -1,6 +1,6 @@
 import { layout, clipLane, cueLane, laneCount, type Project } from './model';
 
-function ranges(project: Project) {
+export function blockRanges(project: Project) {
   return [
     ...layout(project).map((r) => ({
       id: r.clip.id,
@@ -22,7 +22,7 @@ export function validateBlockPlacement(
   lane: number,
   startUs: number,
 ) {
-  const all = ranges(project),
+  const all = blockRanges(project),
     block = all.find((b) => b.id === id);
   if (!block) throw new Error('이동할 블록이 없습니다.');
   const endUs = startUs + block.endUs - block.startUs;
@@ -45,7 +45,7 @@ export function snapBlockStart(
   startUs: number,
   snapUs: number,
 ) {
-  const all = ranges(project),
+  const all = blockRanges(project),
     block = all.find((b) => b.id === id);
   if (!block) return startUs;
   const length = block.endUs - block.startUs,
@@ -65,4 +65,59 @@ export function snapBlockStart(
       }
     }
   return result;
+}
+export function dragGroup(project: Project, selected: string[], anchor: string) {
+  const blocks = blockRanges(project)
+    .filter((b) => selected.includes(b.id))
+    .sort((a, b) => a.startUs - b.startUs);
+  return blocks.length > 1 &&
+    blocks.some((b) => b.id === anchor) &&
+    blocks.every((b, i) => b.lane === blocks[0].lane && (!i || b.startUs === blocks[i - 1].endUs))
+    ? blocks.map((b) => b.id)
+    : [anchor];
+}
+export function moveGroup(project: Project, ids: string[]) {
+  const blocks = blockRanges(project)
+    .filter((b) => ids.includes(b.id))
+    .sort((a, b) => a.startUs - b.startUs);
+  if (
+    !blocks.length ||
+    blocks.length !== new Set(ids).size ||
+    blocks.some((b, i) => b.lane !== blocks[0].lane || (i && b.startUs !== blocks[i - 1].endUs))
+  )
+    throw new Error('같은 라인의 연속 블록만 함께 이동할 수 있습니다.');
+  return { blocks, startUs: blocks[0].startUs, endUs: blocks.at(-1)!.endUs, lane: blocks[0].lane };
+}
+export function resolveMoveStart(
+  project: Project,
+  ids: string[],
+  lane: number,
+  startUs: number,
+  snapUs = 0,
+) {
+  const group = moveGroup(project, ids),
+    span = group.endUs - group.startUs,
+    max = Number.MAX_SAFE_INTEGER - span;
+  if (
+    !Number.isInteger(lane) ||
+    lane < 0 ||
+    lane >= laneCount(project) ||
+    !Number.isFinite(startUs)
+  )
+    throw new Error('블록 위치가 올바르지 않습니다.');
+  const desired = Math.round(Math.max(0, Math.min(max, startUs)));
+  const obstacles = blockRanges(project).filter((b) => !ids.includes(b.id) && b.lane === lane);
+  const fits = (start: number) =>
+    start >= 0 &&
+    start <= max &&
+    !obstacles.some((b) => start < b.endUs && start + span > b.startUs);
+  const candidates = [0, ...obstacles.flatMap((b) => [b.endUs, b.startUs - span])]
+    .filter(fits)
+    .sort((a, b) => Math.abs(a - desired) - Math.abs(b - desired) || a - b);
+  if (fits(desired))
+    return candidates.length && Math.abs(candidates[0] - desired) <= snapUs
+      ? candidates[0]
+      : desired;
+  if (!candidates.length) throw new Error('블록을 놓을 빈 구간이 없습니다.');
+  return candidates[0];
 }

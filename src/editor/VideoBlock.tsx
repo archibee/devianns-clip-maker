@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
-import { clipLane, seconds, timecode, toUs, type Clip, type Project } from '../project/model';
-import { snapBlockStart, validateBlockPlacement } from '../project/block-placement';
+import type { ReactNode } from 'react';
+import { seconds, timecode, type Clip, type Project } from '../project/model';
+import { useBlockDrag, type BlockDragPreview } from './useBlockDrag';
 import type { Command } from '../project/commands';
 import { TimelineIcon } from './TimelineIcon';
 
 type Props = {
+  dragPreview?: BlockDragPreview;
+  onDragPreview: (draft?: BlockDragPreview) => void;
   project: Project;
   clip: Clip;
   startUs: number;
@@ -21,29 +23,25 @@ type Props = {
   onCommand: (command: Command) => void;
   onGestureChange: (active: boolean, moved?: boolean) => void;
 };
-type Draft = { startUs: number; lane: number; offsetY: number };
 export function VideoBlock(p: Props) {
-  const element = useRef<HTMLDivElement>(null),
-    pointerSelected = useRef(false);
-  const gesture = useRef<
-    | {
-        pointerId: number;
-        x: number;
-        y: number;
-        scrollLeft: number;
-        project: Project;
-        moved: boolean;
-      }
-    | undefined
-  >(undefined);
-  const [draft, setDraft] = useState<Draft>();
-  useEffect(
-    () => () => {
-      gesture.current = undefined;
-      p.onGestureChange(false);
-    },
-    [],
-  );
+  const move = useBlockDrag({
+    project: p.project,
+    id: p.clip.id,
+    selectedIds: [...p.selectedIds, ...p.selectedCueIds],
+    zoom: p.zoom,
+    locked: p.locked,
+    onSelect: (additive) => p.onSelect(p.clip.id, additive, false),
+    onTap: () => p.onSeek(p.startUs),
+    onLaneChange: p.onLaneChange,
+    onCommand: p.onCommand,
+    onPreview: p.onDragPreview,
+    onGestureChange: p.onGestureChange,
+  });
+  const preview = p.dragPreview?.ids.includes(p.clip.id) ? p.dragPreview : undefined;
+  const draft = preview
+    ? { startUs: p.startUs + preview.deltaUs, offsetY: preview.offsetY }
+    : undefined;
+  const invalid = preview?.invalid ?? false;
   const asset = p.project.assets.find((a) => a.id === p.clip.assetId)!;
   const audioParts = (p.clip.parts ?? [p.clip]).filter(
     (part) => p.project.assets.find((a) => a.id === part.assetId)?.hasAudio,
@@ -51,84 +49,8 @@ export function VideoBlock(p: Props) {
   const muted =
     audioParts.length > 0 && (p.clip.muted ?? audioParts.every((part) => part.muted === true));
   const selected = p.selectedIds.includes(p.clip.id);
-  let invalid = false;
-  if (draft) {
-    try {
-      validateBlockPlacement(p.project, p.clip.id, draft.lane, draft.startUs);
-    } catch {
-      invalid = true;
-    }
-  }
-  function clear(suppressClick = false) {
-    const g = gesture.current;
-    gesture.current = undefined;
-    setDraft(undefined);
-    if (g) {
-      p.onGestureChange(false, suppressClick && g.moved);
-      if (element.current?.hasPointerCapture(g.pointerId))
-        element.current.releasePointerCapture(g.pointerId);
-    }
-  }
-  useEffect(() => {
-    if (gesture.current && (p.locked || gesture.current.project !== p.project)) clear();
-  }, [p.locked, p.project]);
-  function candidate(clientX: number, clientY: number): Draft {
-    const g = gesture.current!,
-      el = element.current!,
-      scroller = el.closest<HTMLElement>('.timeline-scroll')!;
-    const dx = clientX - g.x + scroller.scrollLeft - g.scrollLeft;
-    g.moved ||= Math.hypot(dx, clientY - g.y) >= 3;
-    if (!g.moved) return { startUs: p.startUs, lane: clipLane(p.clip), offsetY: 0 };
-    const lineElements = [...scroller.querySelectorAll<HTMLElement>('[data-lane]')];
-    const bounds = scroller.getBoundingClientRect(),
-      ruler = scroller.querySelector('.ruler')!.getBoundingClientRect();
-    const target =
-      clientX >= bounds.left &&
-      clientX <= bounds.right &&
-      clientY >= ruler.bottom &&
-      clientY <= bounds.bottom
-        ? lineElements.find((row) => {
-            const rect = row.getBoundingClientRect();
-            return clientY >= rect.top && clientY < rect.bottom;
-          })
-        : undefined;
-    const lane = target ? Number(target.dataset.lane) : (draft?.lane ?? clipLane(p.clip));
-    const from = lineElements.find((row) => Number(row.dataset.lane) === clipLane(p.clip));
-    const to = lineElements.find((row) => Number(row.dataset.lane) === lane);
-    return {
-      startUs: snapBlockStart(
-        g.project,
-        p.clip.id,
-        lane,
-        p.startUs + toUs(dx / p.zoom),
-        toUs(6 / p.zoom),
-      ),
-      lane,
-      offsetY: from && to ? to.getBoundingClientRect().top - from.getBoundingClientRect().top : 0,
-    };
-  }
-  function begin(e: PointerEvent<HTMLDivElement>) {
-    if (p.locked || e.button !== 0 || (e.target as Element).closest('button')) return;
-    e.preventDefault();
-    e.stopPropagation();
-    pointerSelected.current = true;
-    p.onSelect(p.clip.id, e.ctrlKey || e.metaKey, false);
-    e.currentTarget.focus({ preventScroll: true });
-    if (e.ctrlKey || e.metaKey) return;
-    gesture.current = {
-      pointerId: e.pointerId,
-      x: e.clientX,
-      y: e.clientY,
-      scrollLeft: e.currentTarget.closest('.timeline-scroll')!.scrollLeft,
-      project: p.project,
-      moved: false,
-    };
-    e.currentTarget.setPointerCapture(e.pointerId);
-    p.onGestureChange(true);
-  }
   return (
     <div
-      ref={element}
       className={`timeline-clip ${selected ? 'selected' : ''} ${draft ? 'dragging' : ''} ${invalid ? 'invalid' : ''}`}
       role="button"
       tabIndex={p.locked ? -1 : 0}
@@ -140,47 +62,19 @@ export function VideoBlock(p: Props) {
         width: Math.max(5, seconds(p.endUs - p.startUs) * p.zoom),
         transform: draft ? `translateY(${draft.offsetY}px)` : undefined,
       }}
-      onPointerDown={begin}
-      onPointerMove={(e) => {
-        if (gesture.current?.pointerId === e.pointerId) setDraft(candidate(e.clientX, e.clientY));
-      }}
-      onPointerUp={(e) => {
-        if (gesture.current?.pointerId !== e.pointerId) return;
-        e.preventDefault();
-        e.stopPropagation();
-        const result = candidate(e.clientX, e.clientY),
-          g = gesture.current;
-        clear(true);
-        if (g.moved && (result.startUs !== p.startUs || result.lane !== clipLane(p.clip))) {
-          p.onLaneChange(result.lane);
-          p.onCommand({
-            type: 'placeBlock',
-            id: p.clip.id,
-            lane: result.lane,
-            timeUs: result.startUs,
-          });
-        } else if (!g.moved) p.onSeek(p.startUs);
-      }}
-      onPointerCancel={() => clear()}
-      onLostPointerCapture={() => {
-        if (gesture.current) clear();
-      }}
+      {...move.events}
       onClick={(e) => {
         if ((e.target as Element).closest('button')) return;
-        if (pointerSelected.current) {
-          pointerSelected.current = false;
-          return;
-        }
+        if (move.consumeClick()) return;
         if (!p.locked) p.onSelect(p.clip.id, e.ctrlKey || e.metaKey);
       }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
           e.preventDefault();
-          clear();
+          move.cancel();
         } else if (e.key === 'Enter') {
           e.preventDefault();
           e.stopPropagation();
-          pointerSelected.current = false;
           p.onSelect(p.clip.id, e.ctrlKey || e.metaKey);
         }
       }}

@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { MIN_CROP_SIZE, type Asset, type Transform } from '../project/model';
 import { imageRect } from '../render/compositor';
 import { controlRect } from './transform-controls';
+import { MOVE_GRID, snapMoveCenter } from './move-snap';
 
 export type PreviewTool = 'crop' | 'move' | 'resize';
 type Box = { x: number; y: number; width: number; height: number };
@@ -14,6 +15,7 @@ export function PreviewTransformOverlay(p: {
   height: number;
   onCommit: (t: Transform) => void;
   onCropDraft: (t: Transform) => void;
+  onMoveDraft: (t?: Transform) => void;
 }) {
   const overlay = useRef<HTMLDivElement>(null);
   const [space, setSpace] = useState({
@@ -52,6 +54,8 @@ export function PreviewTransformOverlay(p: {
     { x: number; y: number; transform: Transform; handle: string; selection: Box } | undefined
   >(undefined);
   const [draft, setDraft] = useState<Transform>();
+  const [moveGrid, setMoveGrid] = useState(false);
+  const [guides, setGuides] = useState<{ x?: number; y?: number }>({});
   const [cropPreview, setCropPreview] = useState<Transform>();
   const [selection, setSelection] = useState<Box>({ x: 0, y: 0, width: 1, height: 1 });
   const t = draft ?? p.transform;
@@ -118,6 +122,7 @@ export function PreviewTransformOverlay(p: {
           handle: handle ?? '',
           selection: { ...selection },
         };
+        if (p.mode === 'move') setMoveGrid(true);
       }}
       onPointerMove={(e) => {
         const d = drag.current;
@@ -125,13 +130,22 @@ export function PreviewTransformOverlay(p: {
         const box = e.currentTarget.getBoundingClientRect();
         const dx = ((e.clientX - box.left) / box.width) * p.width - d.x,
           dy = ((e.clientY - box.top) / box.height) * p.height - d.y;
-        if (p.mode === 'move')
-          setDraft({
-            ...d.transform,
-            x: clamp(d.transform.x + dx / p.width, -1, 1),
-            y: clamp(d.transform.y + dy / p.height, -1, 1),
-          });
-        else if (p.mode === 'resize') {
+        if (p.mode === 'move') {
+          const snapped = snapMoveCenter(
+            d.transform,
+            p.asset.width,
+            p.asset.height,
+            p.width,
+            p.height,
+            dx,
+            dy,
+            (8 * p.width) / box.width,
+            (8 * p.height) / box.height,
+          );
+          setDraft(snapped.transform);
+          setGuides(snapped.guides);
+          p.onMoveDraft(snapped.transform);
+        } else if (p.mode === 'resize') {
           const c = d.transform.crop ?? { width: 1, height: 1 };
           const original = imageRect(
             p.asset.width * c.width,
@@ -166,14 +180,44 @@ export function PreviewTransformOverlay(p: {
         if (p.mode !== 'crop' && draft) p.onCommit(draft);
         drag.current = undefined;
         setDraft(undefined);
+        setMoveGrid(false);
+        setGuides({});
         e.currentTarget.releasePointerCapture(e.pointerId);
       }}
       onPointerCancel={() => {
         if (drag.current && p.mode === 'crop') updateCrop(drag.current.selection);
         drag.current = undefined;
         setDraft(undefined);
+        if (p.mode === 'move') p.onMoveDraft();
+        setMoveGrid(false);
+        setGuides({});
       }}
     >
+      {moveGrid && (
+        <div className="move-grid" aria-hidden="true">
+          {MOVE_GRID.map((value) => (
+            <div
+              key={`x${value}`}
+              className={`move-guide vertical ${guides.x === value ? 'snapped' : ''}`}
+              style={{ left: `${value * 100}%` }}
+            />
+          ))}
+          {MOVE_GRID.map((value) => (
+            <div
+              key={`y${value}`}
+              className={`move-guide horizontal ${guides.y === value ? 'snapped' : ''}`}
+              style={{ top: `${value * 100}%` }}
+            />
+          ))}
+          <span
+            className="move-center-mark"
+            style={{
+              left: `${((rect.x + rect.width / 2) / p.width) * 100}%`,
+              top: `${((rect.y + rect.height / 2) / p.height) * 100}%`,
+            }}
+          />
+        </div>
+      )}
       <div
         className={`transform-outline ${p.mode === 'crop' ? 'crop-selection' : ''}`}
         style={{

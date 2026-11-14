@@ -121,6 +121,7 @@ export function PreviewPanel(p: Props) {
                 width={size.width}
                 height={size.height}
                 onCommit={(t) => p.onTransform(clip.id, t, tool)}
+                onMoveDraft={(t) => p.playback.previewTransform(t ? clip.id : undefined, t)}
                 onCropDraft={(t) => {
                   cropDraft.current = { id: clip.id, original: clip.transform, transform: t };
                   p.playback.previewTransform(clip.id, t);

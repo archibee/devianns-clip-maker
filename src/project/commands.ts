@@ -17,7 +17,7 @@ import {
 } from './model';
 import { validateCueRange } from './subtitles';
 import { parseProject } from './validation';
-import { validateBlockPlacement } from './block-placement';
+import { validateBlockPlacement, moveGroup, resolveMoveStart } from './block-placement';
 
 export type Command =
   | { type: 'assets'; assets: Asset[] }
@@ -27,6 +27,7 @@ export type Command =
   | { type: 'muteClips'; ids: string[]; muted: boolean }
   | { type: 'deleteLane'; lane: number }
   | { type: 'placeBlock'; id: string; lane: number; timeUs: number }
+  | { type: 'moveBlocks'; ids: string[]; lane: number; timeUs: number }
   | { type: 'deleteBlocks'; ids: string[] }
   | { type: 'pasteBlocks'; clips: Clip[]; cues: Cue[]; timeUs: number; lane: number }
   | { type: 'split'; timeUs: number }
@@ -49,6 +50,30 @@ export type Command =
 export function applyCommand(p: Project, cmd: Command): Project {
   let result = p;
   switch (cmd.type) {
+    case 'moveBlocks': {
+      const group = moveGroup(p, cmd.ids);
+      if (cmd.ids.length > 1 && cmd.lane !== group.lane)
+        throw new Error('묶음 이동은 같은 라인 안에서만 가능합니다.');
+      const start = resolveMoveStart(p, cmd.ids, cmd.lane, cmd.timeUs),
+        delta = start - group.startUs;
+      if (!delta && cmd.lane === group.lane) return p;
+      result = parseProject(
+        JSON.stringify({
+          ...p,
+          clips: layout(p).map((r) => ({
+            ...r.clip,
+            startUs: r.startUs + (cmd.ids.includes(r.clip.id) ? delta : 0),
+            ...(cmd.ids.includes(r.clip.id) ? { lane: cmd.lane } : {}),
+          })),
+          subtitles: p.subtitles.map((c) =>
+            cmd.ids.includes(c.id)
+              ? { ...c, lane: cmd.lane, startUs: c.startUs + delta, endUs: c.endUs + delta }
+              : c,
+          ),
+        }),
+      );
+      break;
+    }
     case 'moveLane': {
       if (
         !Number.isInteger(cmd.lane) ||

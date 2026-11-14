@@ -45,13 +45,11 @@ try {
     x: i ? 0.8 : 0.2,
     y: 0.85,
   }));
-  await page
-    .getByTestId('project-input')
-    .setInputFiles({
-      name: 'timeline.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify(project)),
-    });
+  await page.getByTestId('project-input').setInputFiles({
+    name: 'timeline.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(project)),
+  });
   await page.waitForFunction(() => document.querySelectorAll('.timeline-row').length === 4);
   await page.locator('.timeline-clip').first().click();
   await page.keyboard.press('Control+x');
@@ -61,6 +59,11 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.timeline-clip').length === 2);
   await page.locator('.subtitle-block').first().click();
   await page.keyboard.press('Control+a');
+  assert.equal(await page.locator('.subtitle-block.selected').count(), 1);
+  await page
+    .locator('.subtitle-block')
+    .nth(1)
+    .click({ modifiers: ['Control'] });
   assert.equal(await page.locator('.subtitle-block.selected').count(), 2);
   await page.keyboard.press('Control+x');
   await page.waitForFunction(() => document.querySelectorAll('.subtitle-block').length === 0);

@@ -24,6 +24,7 @@ import { SubtitleBlock } from './SubtitleBlock';
 import { TimelineIcon } from './TimelineIcon';
 import { VideoBlock } from './VideoBlock';
 import { followPlayhead } from './timeline-scroll';
+import type { BlockDragPreview } from './useBlockDrag';
 
 type Props = {
   activeLane: number;
@@ -61,21 +62,31 @@ export function Timeline(p: Props) {
     return () => observer.disconnect();
   }, []);
   const [zoom, setZoom] = useState(52);
+  const [dragPreview, setDragPreview] = useState<BlockDragPreview>();
   const [trim, setTrim] = useState<{
     id: string;
     side: 'in' | 'out';
     startX: number;
     delta: number;
   }>();
-  const videoDragging = useRef(false),
+  const blockDragging = useRef(false),
     suppressClick = useRef(false);
+  const gestureChanged = (active: boolean, moved?: boolean) => {
+    blockDragging.current = active;
+    if (moved) {
+      suppressClick.current = true;
+      setTimeout(() => {
+        suppressClick.current = false;
+      }, 0);
+    }
+  };
   const rows = layout(p.project);
   const total = duration(p.project);
   const visibleSeconds = Math.max(16, seconds(Math.max(total, p.timeUs)) + 4);
   const width = Math.max(700, visibleSeconds * zoom);
   useLayoutEffect(() => {
     const el = scroll.current;
-    if (!el || videoDragging.current || trim) return;
+    if (!el || blockDragging.current || trim) return;
     const next = followPlayhead(
       72 + seconds(p.timeUs) * zoom,
       el.scrollLeft,
@@ -339,6 +350,8 @@ export function Timeline(p: Props) {
                   if (clipLane(clip) !== lane) return null;
                   return (
                     <VideoBlock
+                      dragPreview={dragPreview}
+                      onDragPreview={setDragPreview}
                       key={clip.id}
                       project={p.project}
                       clip={clip}
@@ -353,15 +366,7 @@ export function Timeline(p: Props) {
                       onSeek={p.onSeek}
                       onLaneChange={p.onLaneChange}
                       onCommand={p.onCommand}
-                      onGestureChange={(active, moved) => {
-                        videoDragging.current = active;
-                        if (moved) {
-                          suppressClick.current = true;
-                          setTimeout(() => {
-                            suppressClick.current = false;
-                          }, 0);
-                        }
-                      }}
+                      onGestureChange={gestureChanged}
                       handles={
                         p.selectedIds.length < 2 ? (
                           <>
@@ -381,6 +386,10 @@ export function Timeline(p: Props) {
                   .filter((c) => cueLane(c) === lane)
                   .map((c) => (
                     <SubtitleBlock
+                      selectedIds={[...p.selectedIds, ...p.selectedCueIds]}
+                      dragPreview={dragPreview}
+                      onDragPreview={setDragPreview}
+                      onGestureChange={gestureChanged}
                       key={c.id}
                       onLaneChange={p.onLaneChange}
                       project={p.project}
