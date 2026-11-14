@@ -172,7 +172,7 @@ export function Timeline(p: Props) {
               라인 삭제
             </button>
             <button
-              aria-label="라인 위 ↑"
+              aria-label="라인 위"
               disabled={p.locked || p.activeLane <= 0}
               onClick={() => p.onMoveLane(-1)}
             >
@@ -180,7 +180,7 @@ export function Timeline(p: Props) {
               라인 위
             </button>
             <button
-              aria-label="라인 아래 ↓"
+              aria-label="라인 아래"
               disabled={p.locked || p.activeLane >= laneCount(p.project) - 1}
               onClick={() => p.onMoveLane(1)}
             >
@@ -213,7 +213,7 @@ export function Timeline(p: Props) {
               블록 합치기
             </button>
             <button
-              aria-label="블록 이동 ←"
+              aria-label="블록 왼쪽"
               disabled={p.locked || currentIndex <= 0}
               onClick={() =>
                 p.onCommand({
@@ -224,10 +224,10 @@ export function Timeline(p: Props) {
               }
             >
               <TimelineIcon name="left" />
-              블록 이동
+              블록 왼쪽
             </button>
             <button
-              aria-label="블록 이동 →"
+              aria-label="블록 오른쪽"
               disabled={p.locked || currentIndex < 0 || currentIndex >= selectedLaneRows.length - 1}
               onClick={() =>
                 p.onCommand({
@@ -237,8 +237,8 @@ export function Timeline(p: Props) {
                 })
               }
             >
-              블록 이동
               <TimelineIcon name="right" />
+              블록 오른쪽
             </button>
           </div>
           <div className="timeline-tool-group" role="group" aria-label="확장 기능">
@@ -248,7 +248,7 @@ export function Timeline(p: Props) {
               onClick={p.onAutoCut}
             >
               <TimelineIcon name="auto" />
-              Auto Cut
+              AUTO CUT
             </button>
           </div>
         </div>

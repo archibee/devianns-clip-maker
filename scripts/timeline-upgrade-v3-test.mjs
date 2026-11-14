@@ -51,13 +51,13 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.timeline-row').length === 3);
   await page.locator('.lane-label').first().click();
   assert.equal(
-    await page.getByRole('button', { name: '라인 위 ↑', exact: true }).isDisabled(),
+    await page.getByRole('button', { name: '라인 위', exact: true }).isDisabled(),
     true,
   );
-  await page.getByRole('button', { name: '라인 아래 ↓', exact: true }).click();
+  await page.getByRole('button', { name: '라인 아래', exact: true }).click();
   assert.ok((await page.locator('.timeline-row').first().innerText()).includes('blue.mp4'));
   assert.equal(await page.locator('.lane-label').nth(1).getAttribute('aria-pressed'), 'true');
-  await page.getByRole('button', { name: '라인 위 ↑', exact: true }).click();
+  await page.getByRole('button', { name: '라인 위', exact: true }).click();
   const selectMixed = async () => {
     await page.locator('.timeline-clip').first().click();
     await page
@@ -70,7 +70,7 @@ try {
   };
   await selectMixed();
   assert.equal(
-    await page.getByRole('button', { name: 'Auto Cut', exact: true }).isDisabled(),
+    await page.getByRole('button', { name: 'AUTO CUT', exact: true }).isDisabled(),
     true,
   );
   await page.locator('.clip-mute').first().click();

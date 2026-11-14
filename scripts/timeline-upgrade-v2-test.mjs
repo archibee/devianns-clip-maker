@@ -52,7 +52,7 @@ try {
       buffer: Buffer.from(JSON.stringify(project)),
     });
   await page.waitForFunction(() => document.querySelectorAll('.timeline-clip').length === 3);
-  const button = page.getByRole('button', { name: 'Auto Cut', exact: true });
+  const button = page.getByRole('button', { name: 'AUTO CUT', exact: true });
   await page.locator('.timeline-clip').first().click();
   assert.equal(await button.isEnabled(), true);
   await page

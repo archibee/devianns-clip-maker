@@ -11,6 +11,7 @@ import type { PlaybackService, PlaybackState } from '../playback/service';
 import { previewSize } from '../render/compositor';
 import { PreviewTransformOverlay, type PreviewTool } from './PreviewTransformOverlay';
 import { PanelTitle } from './Panel';
+import { TimelineIcon } from './TimelineIcon';
 
 type Props = {
   project: Project;
@@ -80,7 +81,8 @@ export function PreviewPanel(p: Props) {
                 setTool(tool === mode ? undefined : mode);
               }}
             >
-              {mode[0].toUpperCase() + mode.slice(1)}
+              <TimelineIcon name={mode} />
+              {mode.toUpperCase()}
             </button>
           ))}
         </div>
