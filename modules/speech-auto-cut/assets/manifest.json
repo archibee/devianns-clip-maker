@@ -1,0 +1,13 @@
+{
+  "silero": {
+    "revision": "066409f3d9db45a30d21dfcbf9147826ffdd7052",
+    "file": "silero_vad.onnx",
+    "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+    "license": "MIT"
+  },
+  "onnxruntime": {
+    "version": "1.31.1",
+    "integrity": "sha512-5GeH+bWQ+HxM10z7erGlsWqryrwMbSvm/1tkIsKTT48g0fI19VXVVC435t4t7VsPdSQeS7NmuZPXrQ73k82URw==",
+    "license": "MIT"
+  }
+}

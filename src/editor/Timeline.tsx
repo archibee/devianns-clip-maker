@@ -19,6 +19,8 @@ type Props = {
   onCommand: (command: Command) => void;
   onSplit: () => void;
   onDelete: () => void;
+  onAutoCut: () => void;
+  autoCutUnavailable?: string;
 };
 export function Timeline(p: Props) {
   const scroll = useRef<HTMLDivElement>(null);
@@ -122,6 +124,13 @@ export function Timeline(p: Props) {
       <PanelTitle number="04" title="타임라인">
         <span className="quality-badge">영상 + 원본 오디오 연결</span>
         <div className="timeline-tools">
+          <button
+            disabled={p.locked || !!p.autoCutUnavailable}
+            title={p.autoCutUnavailable ?? '음성 기반 자동 컷편집'}
+            onClick={p.onAutoCut}
+          >
+            Auto Cut
+          </button>
           <button
             disabled={p.locked || !duration(p.project)}
             onClick={p.onSplit}

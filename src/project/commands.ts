@@ -26,6 +26,7 @@ export type Command =
   | { type: 'cue'; cue: Cue }
   | { type: 'cueRange'; id: string; startUs: number; endUs: number }
   | { type: 'deleteCue'; id: string }
+  | { type: 'replaceTimeline'; clips: Clip[]; subtitles: Cue[] }
   | { type: 'settings'; patch: Partial<Pick<Project, 'name' | 'aspect' | 'fps'>> };
 
 export function applyCommand(p: Project, cmd: Command): Project {
@@ -240,6 +241,9 @@ export function applyCommand(p: Project, cmd: Command): Project {
       break;
     case 'settings':
       result = { ...p, ...cmd.patch };
+      break;
+    case 'replaceTimeline':
+      result = { ...p, clips: cmd.clips, subtitles: cmd.subtitles };
       break;
   }
   if (!Number.isSafeInteger(duration(result))) throw new Error('타임라인 시간이 너무 큽니다.');

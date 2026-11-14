@@ -1,5 +1,7 @@
 import { prepareLocalFonts } from '../render/local-fonts';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { autoCutUnavailable } from '../../modules/speech-auto-cut/src/eligibility';
+import { AutoCutBoundary, AutoCutPending } from '../../modules/speech-auto-cut/src/ModuleBoundary';
 import { AssetPanel } from '../editor/AssetPanel';
 import { ExportDialog } from '../editor/ExportDialog';
 import { Inspector, NumberField } from '../editor/Inspector';
@@ -32,6 +34,8 @@ import {
 import { parseProject } from '../project/validation';
 import { autosave, recover, saveProject } from '../storage/project-storage';
 
+const AutoCutDialog = lazy(() => import('../../modules/speech-auto-cut/src/AutoCutDialog'));
+
 export function App() {
   const [history, setHistory] = useState(() => initialHistory(emptyProject()));
   const historyRef = useRef(history);
@@ -63,20 +67,27 @@ export function App() {
   const [message, setMessage] = useState<string>();
   const dismissMessage = useCallback(() => setMessage(undefined), []);
   const [notice, setNotice] = useState('영상 파일은 서버로 전송되지 않습니다.');
-  const [modal, setModal] = useState<'export' | 'help' | 'recover'>();
+  const [modal, setModal] = useState<'export' | 'help' | 'recover' | 'autoCut'>();
   const [recovery, setRecovery] = useState<Project>();
   const [restoreReady, setRestoreReady] = useState(false);
   const [registryVersion, setRegistryVersion] = useState(0);
   const projectPicker = useRef<HTMLInputElement>(null);
   const reconnectPicker = useRef<HTMLInputElement>(null);
   const reconnectAsset = useRef<Asset | undefined>(undefined);
-  const locked = exportState.status === 'running' || importing;
+  const locked = exportState.status === 'running' || importing || modal === 'autoCut';
   const lockedRef = useRef(locked);
   lockedRef.current = locked;
   const supported =
     globalThis.isSecureContext &&
     typeof globalThis.VideoDecoder === 'function' &&
     typeof globalThis.OffscreenCanvas === 'function';
+  const autoCutReason = useMemo(
+    () =>
+      supported
+        ? autoCutUnavailable(project, registry)
+        : '이 브라우저는 음성 분석을 지원하지 않습니다.',
+    [supported, project, registry, registryVersion],
+  );
   function act(action: HistoryAction) {
     if (lockedRef.current) return false;
     try {
@@ -98,6 +109,36 @@ export function App() {
   }
   function command(cmd: Command) {
     return act({ type: 'command', command: cmd });
+  }
+  function applyAutoCut(expected: Project, result: Project) {
+    if (
+      modal !== 'autoCut' ||
+      historyRef.current.present !== expected ||
+      importing ||
+      exportState.status === 'running'
+    )
+      throw new Error('분석 중 프로젝트 상태가 변경됐습니다. 취소하고 다시 분석하세요.');
+    const current = historyRef.current.present;
+    const validated = parseProject(
+      JSON.stringify({ ...current, clips: result.clips, subtitles: result.subtitles }),
+    );
+    if (!validated.clips.length) throw new Error('남길 영상이 없어 완료할 수 없습니다.');
+    const next = historyReducer(historyRef.current, {
+      type: 'command',
+      command: { type: 'replaceTimeline', clips: validated.clips, subtitles: validated.subtitles },
+    });
+    playback.pause();
+    historyRef.current = next;
+    pendingSeek.current = 0;
+    cueClipboard.current = undefined;
+    setHistory(next);
+    setSelected(undefined);
+    setSelectedIds([]);
+    setSelectedCue(undefined);
+    setInspectorTab('clip');
+    setMessage(undefined);
+    setModal(undefined);
+    setNotice('Auto Cut 적용 완료 · 실행 취소로 원래 타임라인을 복구할 수 있습니다.');
   }
   function split() {
     command({ type: 'split', timeUs: playState.timeUs });
@@ -439,6 +480,13 @@ export function App() {
           onSeek={(us) => playback.seek(us)}
         />
         <Timeline
+          autoCutUnavailable={autoCutReason}
+          onAutoCut={() => {
+            if (!locked && !autoCutUnavailable(project, registry)) {
+              playback.pause();
+              setModal('autoCut');
+            }
+          }}
           selectedIds={selectedIds}
           onMerge={merge}
           project={project}
@@ -473,6 +521,18 @@ export function App() {
           WEB CODECS <b>·</b> LOCAL FIRST
         </span>
       </footer>
+      {modal === 'autoCut' && (
+        <AutoCutBoundary onCancel={() => setModal(undefined)}>
+          <Suspense fallback={<AutoCutPending onCancel={() => setModal(undefined)} />}>
+            <AutoCutDialog
+              project={project}
+              registry={registry}
+              onCancel={() => setModal(undefined)}
+              onApply={applyAutoCut}
+            />
+          </Suspense>
+        </AutoCutBoundary>
+      )}
       {modal === 'export' && (
         <ExportDialog
           project={project}

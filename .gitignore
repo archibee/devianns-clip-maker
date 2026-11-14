@@ -1,5 +1,6 @@
 node_modules/
 dist/
+public/speech-auto-cut/
 .tools/
 .tmp/
 test-results/
