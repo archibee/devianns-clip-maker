@@ -496,7 +496,9 @@ export function applyCommand(p: Project, cmd: Command): Project {
       const previous = p.subtitles.find((c) => c.id === cmd.cue.id);
       if (!previous || previous.startUs !== cmd.cue.startUs || previous.endUs !== cmd.cue.endUs)
         validateCueRange(p, cmd.cue);
-      result = { ...p, subtitles: [...p.subtitles.filter((c) => c.id !== cmd.cue.id), cmd.cue] };
+      result = { ...p, subtitles: p.subtitles.some(c => c.id === cmd.cue.id)
+        ? p.subtitles.map(c => c.id === cmd.cue.id ? cmd.cue : c)
+        : [...p.subtitles, cmd.cue] };
       break;
     }
     case 'cueRange': {

@@ -221,7 +221,7 @@ export function Inspector(p: Props) {
               data-cue-id={cue.id}
               value={cue.text}
               maxLength={2000}
-              rows={2}
+              rows={1}
               placeholder="선택한 자막 내용을 입력하세요"
               onChange={(event) => updateCue({ text: event.target.value })}
             />

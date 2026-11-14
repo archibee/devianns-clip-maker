@@ -35,6 +35,23 @@ function project(): Project {
     subtitles: [cue],
   };
 }
+it('자막을 수정해도 목록 순서와 다른 자막을 보존하고 undo로 복구한다', () => {
+  const original = {
+    ...project(),
+    subtitles: [
+      cue,
+      { ...cue, id: 'next', startUs: 3_000_000, endUs: 4_000_000, text: '다음 자막' },
+    ],
+  };
+  const changed = historyReducer(initialHistory(original), {
+    type: 'command',
+    command: { type: 'cue', cue: { ...cue, text: '수정한 자막' } },
+  });
+  expect(changed.present.subtitles.map((c) => c.id)).toEqual(['q', 'next']);
+  expect(changed.present.subtitles[1]).toEqual(original.subtitles[1]);
+  expect(changed.present.subtitles[0].text).toBe('수정한 자막');
+  expect(historyReducer(changed, { type: 'undo' }).present).toEqual(original);
+});
 describe('영상·자막 동시 분할', () => {
   it('한 명령으로 영상과 교차하는 자막을 함께 자르고 undo/redo한다', () => {
     const initial = initialHistory(project());

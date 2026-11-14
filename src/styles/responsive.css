@@ -34,9 +34,10 @@
     min-width: 0;
     gap: 0;
   }
-  .toolbar .project-name input {
+  .toolbar .project-name input[aria-label] {
     width: 100%;
     min-height: 30px;
+    height: 30px;
     padding: 3px;
     font-size: 12px;
   }
@@ -174,6 +175,9 @@
     width: clamp(38px, 7vw, 80px);
   }
   .timeline-footer {
+    height: 40px;
+    min-height: 40px;
+    flex-shrink: 0;
     padding: 0 8px;
     gap: 4px;
     grid-template-columns: minmax(0, 1fr) minmax(0, 450px) minmax(0, 1fr);
@@ -212,7 +216,12 @@
   }
   .cue-quick-editor textarea {
     font-size: 16px;
+    height: 32px;
+    min-height: 32px;
+    max-height: 32px;
+    padding: 3px 8px;
   }
+  .subtitle-inspector .cue-quick-editor { flex-basis: 60px; min-height: 58px; }
   .resize-handle {
     min-width: 18px;
     min-height: 18px;
@@ -289,7 +298,18 @@
     grid-row: 4;
   }
   .toolbar {
-    grid-template-columns: minmax(76px, 0.8fr) minmax(48px, 0.45fr) minmax(0, 1.8fr);
+    grid-template-columns: max-content max-content minmax(0, 1fr);
+    column-gap: 2px;
+  }
+  .toolbar .brand {
+    max-width: clamp(72px, 20vw, 100px);
+  }
+  .toolbar .project-name {
+    width: clamp(48px, 13vw, 68px);
+  }
+  .toolbar .project-name input[aria-label] {
+    padding-left: 1px;
+    padding-right: 1px;
   }
   .toolbar nav .divider {
     display: none;
@@ -322,7 +342,7 @@
     margin: 0;
   }
   .subtitle-inspector .cue-quick-editor {
-    flex-basis: 80px;
+    flex-basis: 60px;
   }
   .subtitle-inspector .subtitle-list-region {
     flex-basis: 76px;
