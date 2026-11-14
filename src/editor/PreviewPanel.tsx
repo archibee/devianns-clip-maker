@@ -36,7 +36,7 @@ export function PreviewPanel(p: Props) {
   }, [p.playback]);
   return (
     <section className="preview-panel panel">
-      <PanelTitle number="02" title="프로그램 미리보기">
+      <PanelTitle number="02" title="미리보기">
         <div className="preview-tools">
           {(['crop', 'move', 'resize'] as const).map((mode) => (
             <button
