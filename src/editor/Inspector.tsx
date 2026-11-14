@@ -190,7 +190,7 @@ export function Inspector(p: Props) {
     if (p.onCommand({ type: 'cue', cue })) p.onSelectCue(cue.id);
   };
   return (
-    <section className="inspector-panel panel">
+    <section className={`inspector-panel panel ${tab === 'subtitle' ? 'subtitle-inspector' : ''}`}>
       <PanelTitle number="03" title="속성">
         <span className="quality-badge">편집</span>
       </PanelTitle>
@@ -206,6 +206,28 @@ export function Inspector(p: Props) {
           자막 <small>{p.project.subtitles.length}</small>
         </button>
       </div>
+      {tab === 'subtitle' && cue && !multi && !p.locked && (
+        <div className="cue-quick-editor">
+          <label>
+            <span className="cue-quick-heading">
+              선택 자막 바로 편집{' '}
+              <small>
+                {seconds(cue.startUs).toFixed(2)}–{seconds(cue.endUs).toFixed(2)}s
+              </small>
+            </span>
+            <textarea
+              key={cue.id}
+              aria-label="선택 자막 빠른 편집"
+              data-cue-id={cue.id}
+              value={cue.text}
+              maxLength={2000}
+              rows={2}
+              placeholder="선택한 자막 내용을 입력하세요"
+              onChange={(event) => updateCue({ text: event.target.value })}
+            />
+          </label>
+        </div>
+      )}
       <div className="inspector-body">
         {tab === 'clip' ? (
           <>
@@ -363,25 +385,6 @@ export function Inspector(p: Props) {
               <button className="subtle" disabled={p.locked} onClick={addCue}>
                 ＋ 추가
               </button>
-            </div>
-            <div className="cue-list">
-              {p.project.subtitles.map((c) => (
-                <button
-                  className={selectedCueIds.includes(c.id) ? 'active' : ''}
-                  aria-pressed={selectedCueIds.includes(c.id)}
-                  key={c.id}
-                  onClick={(event) => {
-                    if (p.locked) return;
-                    p.onSelectCue(c.id, event.ctrlKey || event.metaKey);
-                    if (!event.ctrlKey && !event.metaKey) p.onSeek(c.startUs);
-                  }}
-                >
-                  <small>
-                    {seconds(c.startUs).toFixed(2)}–{seconds(c.endUs).toFixed(2)}s
-                  </small>
-                  <span>{c.text || '(빈 자막)'}</span>
-                </button>
-              ))}
             </div>
             {cue && (
               <div className="cue-editor" key={selectionKey}>
@@ -548,16 +551,6 @@ export function Inspector(p: Props) {
                 )}
                 {!multi && (
                   <>
-                    <label className="field">
-                      내용
-                      <textarea
-                        aria-label="자막 내용"
-                        value={cue.text}
-                        maxLength={2000}
-                        disabled={p.locked}
-                        onChange={(e) => updateCue({ text: e.target.value })}
-                      />
-                    </label>
                     <div className="field-pair">
                       <NumberField
                         label="자막 시작 (초)"
@@ -695,26 +688,29 @@ export function Inspector(p: Props) {
           </>
         )}
       </div>
-      {tab === 'subtitle' && cue && !multi && !p.locked && (
-        <div className="cue-quick-editor">
-          <label>
-            <span className="cue-quick-heading">
-              선택 자막 바로 편집{' '}
-              <small>
-                {seconds(cue.startUs).toFixed(2)}–{seconds(cue.endUs).toFixed(2)}s
-              </small>
-            </span>
-            <textarea
-              key={cue.id}
-              aria-label="선택 자막 빠른 편집"
-              data-cue-id={cue.id}
-              value={cue.text}
-              maxLength={2000}
-              rows={2}
-              placeholder="선택한 자막 내용을 입력하세요"
-              onChange={(event) => updateCue({ text: event.target.value })}
-            />
-          </label>
+
+      {tab === 'subtitle' && (
+        <div className="subtitle-list-region" aria-label="자막 목록">
+          <h3>자막 목록</h3>
+          <div className="cue-list">
+            {p.project.subtitles.map((c) => (
+              <button
+                className={selectedCueIds.includes(c.id) ? 'active' : ''}
+                aria-pressed={selectedCueIds.includes(c.id)}
+                key={c.id}
+                onClick={(event) => {
+                  if (p.locked) return;
+                  p.onSelectCue(c.id, event.ctrlKey || event.metaKey);
+                  if (!event.ctrlKey && !event.metaKey) p.onSeek(c.startUs);
+                }}
+              >
+                <small>
+                  {seconds(c.startUs).toFixed(2)}–{seconds(c.endUs).toFixed(2)}s
+                </small>
+                <span>{c.text || '(빈 자막)'}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </section>

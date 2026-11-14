@@ -52,6 +52,7 @@
 
 - [final_upgrade_v1.md](./final/final_upgrade_v1.md)
 - [final_upgrade_v2.md](./final/final_upgrade_v2.md)
+- [final_upgrade_v3.md](./final/final_upgrade_v3.md)
 
 ## 반응형 UI
 

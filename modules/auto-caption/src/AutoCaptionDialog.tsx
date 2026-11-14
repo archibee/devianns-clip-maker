@@ -88,7 +88,7 @@ export default function AutoCaptionDialog(p: Props) {
         setProgress({stage: '설정이 변경됐습니다. 다시 분석하세요.', progress: 0});
       }}>{CAPTION_PRESETS.map((item, index) => <option key={item.label} value={index}>{item.label}</option>)}</select>
     </label>
-    <p className="muted">높을수록 약한 음성을 더 감지합니다. 매우 높음(임계값 0)은 무음까지 포함할 수 있고, 매우 낮음(임계값 1)은 결과가 없을 수 있습니다. 음성 내용을 글자로 변환하지 않습니다.</p>
+    <p className="muted">높을수록 약한 음성을 더 감지합니다. 시작 임계값은 매우 높음 0.3부터 매우 낮음 0.7까지입니다. 음성 내용을 글자로 변환하지 않습니다.</p>
     <button className="primary" disabled={busy} onClick={() => void analyze()}>{analysis ? '다시 분석' : '음성 분석 시작'}</button>
     <div className="auto-caption-progress" aria-live="polite"><span>{progress.stage}</span>
       <progress max={1} value={progress.progress} aria-label="음성 분석 진행률" />

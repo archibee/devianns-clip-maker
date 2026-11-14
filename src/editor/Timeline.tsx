@@ -417,9 +417,7 @@ export function Timeline(p: Props) {
         </div>
       </div>
       <footer className="timeline-footer">
-        <span>{rows.length} 클립</span>
         <label>
-          재생 위치{' '}
           <input
             aria-label="재생 위치"
             type="range"

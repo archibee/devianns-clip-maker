@@ -297,7 +297,7 @@ export default function AutoCutDialog(p: Props) {
         <p className="auto-cut-preset-note">
           강도가 높을수록 약한 음성을 더 보존합니다. 확률은 정확도 수치가 아니며, 여백은 빈 화면
           삽입이 아닌 원본 영상·소리의 보존 길이입니다.
-          매우 높음(임계값 0)은 무음까지 포함할 수 있고, 매우 낮음(임계값 1)은 음성을 거의 감지하지 못할 수 있습니다.
+          음성 시작 임계값은 매우 높음 0.3부터 매우 낮음 0.7까지입니다. 작은 목소리는 높은 강도로 시작하세요.
         </p>
         <div className="auto-cut-body">
           <div className="auto-cut-settings">
