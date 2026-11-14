@@ -477,9 +477,28 @@ export function App() {
           }}
         />
         <PreviewPanel
+          selectedIds={selectedIds}
           project={project}
           selected={selected}
-          onTransform={(id, transform) => command({ type: 'transform', id, transform })}
+          onTransform={(id, transform, mode) =>
+            selectedIds.length > 1
+              ? command({
+                  type: 'transforms',
+                  ids: selectedIds,
+                  patch:
+                    mode === 'move'
+                      ? { x: transform.x, y: transform.y }
+                      : mode === 'resize'
+                        ? { scale: transform.scale }
+                        : {
+                            crop: transform.crop,
+                            scale: transform.scale,
+                            x: transform.x,
+                            y: transform.y,
+                          },
+                })
+              : command({ type: 'transform', id, transform })
+          }
           state={playState}
           playback={playback}
           locked={locked}
@@ -487,6 +506,7 @@ export function App() {
           onToggle={toggle}
         />
         <Inspector
+          selectedIds={selectedIds}
           selectedCueIds={selectedCueIds}
           project={project}
           selected={selected}

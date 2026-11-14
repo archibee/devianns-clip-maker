@@ -26,6 +26,7 @@ export type Command =
   | { type: 'trim'; id: string; inUs: number; outUs: number }
   | { type: 'move'; id: string; index: number }
   | { type: 'transform'; id: string; transform: Clip['transform'] }
+  | { type: 'transforms'; ids: string[]; patch: Partial<Clip['transform']> }
   | { type: 'cue'; cue: Cue }
   | { type: 'cueRange'; id: string; startUs: number; endUs: number }
   | { type: 'deleteCue'; id: string }
@@ -208,6 +209,37 @@ export function applyCommand(p: Project, cmd: Command): Project {
           return next;
         }),
       };
+      break;
+    }
+    case 'transforms': {
+      const keys = ['fit', 'scale', 'x', 'y', 'crop'] as const;
+      const patch = Object.fromEntries(
+        keys
+          .filter((key) => Object.prototype.hasOwnProperty.call(cmd.patch, key))
+          .map((key) => [key, cmd.patch[key]]),
+      );
+      if (!Object.keys(patch).length || !p.clips.some((c) => cmd.ids.includes(c.id))) return p;
+      result = parseProject(
+        JSON.stringify({
+          ...p,
+          clips: p.clips.map((c) =>
+            cmd.ids.includes(c.id)
+              ? {
+                  ...c,
+                  transform: { ...c.transform, ...patch },
+                  ...(c.parts
+                    ? {
+                        parts: c.parts.map((part) => ({
+                          ...part,
+                          transform: { ...part.transform, ...patch },
+                        })),
+                      }
+                    : {}),
+                }
+              : c,
+          ),
+        }),
+      );
       break;
     }
     case 'transform':

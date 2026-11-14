@@ -9,6 +9,7 @@ import {
   type Cue,
   type CueStyle,
   type Project,
+  type Transform,
 } from '../project/model';
 import type { Command } from '../project/commands';
 import { PanelTitle } from './Panel';
@@ -104,6 +105,7 @@ export function NumberField({
 type Props = {
   project: Project;
   selected?: string;
+  selectedIds?: string[];
   selectedCue?: string;
   selectedCueIds?: string[];
   tab: 'clip' | 'subtitle';
@@ -120,6 +122,18 @@ export function Inspector(p: Props) {
   const tab = p.tab;
   const clip = p.project.clips.find((c) => c.id === p.selected);
   const asset = p.project.assets.find((a) => a.id === clip?.assetId);
+  const clips = p.project.clips.filter((c) => (p.selectedIds ?? [p.selected]).includes(c.id));
+  const multiClip = clips.length > 1;
+  const clipSelectionKey = JSON.stringify(clips.map((c) => c.id));
+  const mixedTransform = (key: keyof Transform) =>
+    multiClip &&
+    clips.some((c) => JSON.stringify(c.transform[key]) !== JSON.stringify(clip?.transform[key]));
+  const updateTransform = (patch: Partial<Transform>) => {
+    if (!clip) return false;
+    return multiClip
+      ? p.onCommand({ type: 'transforms', ids: clips.map((c) => c.id), patch })
+      : p.onCommand({ type: 'transform', id: clip.id, transform: { ...clip.transform, ...patch } });
+  };
   const selectedCueIds = p.selectedCueIds ?? (p.selectedCue ? [p.selectedCue] : []);
   const selectedCues = selectedCueIds.flatMap(
     (id) => p.project.subtitles.find((c) => c.id === id) ?? [],
@@ -235,7 +249,12 @@ export function Inspector(p: Props) {
             <div className="section-rule" />
             {clip && asset ? (
               <>
-                <h3>선택한 클립</h3>
+                <h3>{multiClip ? `영상 ${clips.length}개 공통 설정` : '선택한 클립'}</h3>
+                {multiClip && (
+                  <div className="cue-batch-note">
+                    변경한 설정만 선택 영상 전체에 적용합니다. 원본 구간은 하나만 선택해 수정하세요.
+                  </div>
+                )}
                 <p className="selected-name" title={asset.name}>
                   {asset.name}
                 </p>
@@ -245,7 +264,7 @@ export function Inspector(p: Props) {
                     value={seconds(clip.inUs)}
                     min={0}
                     max={seconds(clip.outUs) - 0.000001}
-                    disabled={p.locked}
+                    disabled={p.locked || multiClip}
                     onCommit={(n) =>
                       p.onCommand({ type: 'trim', id: clip.id, inUs: toUs(n), outUs: clip.outUs })
                     }
@@ -259,93 +278,74 @@ export function Inspector(p: Props) {
                         ? clip.parts.reduce((n, c) => n + c.outUs - c.inUs, 0)
                         : asset.durationUs,
                     )}
-                    disabled={p.locked}
+                    disabled={p.locked || multiClip}
                     onCommit={(n) =>
                       p.onCommand({ type: 'trim', id: clip.id, inUs: clip.inUs, outUs: toUs(n) })
                     }
                   />
                 </div>
                 <h3>프레임 배치</h3>
-                <label className="field">
-                  맞춤
-                  <select
+                <div key={clipSelectionKey}>
+                  <label className="field">
+                    맞춤
+                    <select
+                      disabled={p.locked}
+                      aria-label="클립 맞춤"
+                      value={mixedTransform('fit') ? '' : clip.transform.fit}
+                      onChange={(e) =>
+                        updateTransform({ fit: e.target.value as 'contain' | 'cover' })
+                      }
+                    >
+                      {mixedTransform('fit') && (
+                        <option value="" disabled>
+                          여러 값
+                        </option>
+                      )}
+                      <option value="contain">전체 보기 · Contain</option>
+                      <option value="cover">화면 채우기 · Cover</option>
+                    </select>
+                  </label>
+                  <NumberField
+                    label="배율"
+                    mixed={mixedTransform('scale')}
+                    value={clip.transform.scale}
+                    min={0.1}
+                    max={5}
+                    step={0.1}
                     disabled={p.locked}
-                    aria-label="클립 맞춤"
-                    value={clip.transform.fit}
-                    onChange={(e) =>
-                      p.onCommand({
-                        type: 'transform',
-                        id: clip.id,
-                        transform: {
-                          ...clip.transform,
-                          fit: e.target.value as 'contain' | 'cover',
-                        },
-                      })
+                    onCommit={(scale) => updateTransform({ scale })}
+                  />
+                  <div className="field-pair">
+                    <NumberField
+                      label="가로 위치"
+                      mixed={mixedTransform('x')}
+                      value={clip.transform.x}
+                      min={-1}
+                      max={1}
+                      step={0.05}
+                      disabled={p.locked}
+                      onCommit={(x) => updateTransform({ x })}
+                    />
+                    <NumberField
+                      label="세로 위치"
+                      mixed={mixedTransform('y')}
+                      value={clip.transform.y}
+                      min={-1}
+                      max={1}
+                      step={0.05}
+                      disabled={p.locked}
+                      onCommit={(y) => updateTransform({ y })}
+                    />
+                  </div>
+                  <button
+                    disabled={p.locked}
+                    onClick={() =>
+                      updateTransform({ fit: 'contain', scale: 1, x: 0, y: 0, crop: undefined })
                     }
                   >
-                    <option value="contain">전체 보기 · Contain</option>
-                    <option value="cover">화면 채우기 · Cover</option>
-                  </select>
-                </label>
-                <NumberField
-                  label="배율"
-                  value={clip.transform.scale}
-                  min={0.1}
-                  max={5}
-                  step={0.1}
-                  disabled={p.locked}
-                  onCommit={(scale) =>
-                    p.onCommand({
-                      type: 'transform',
-                      id: clip.id,
-                      transform: { ...clip.transform, scale },
-                    })
-                  }
-                />
-                <div className="field-pair">
-                  <NumberField
-                    label="가로 위치"
-                    value={clip.transform.x}
-                    min={-1}
-                    max={1}
-                    step={0.05}
-                    disabled={p.locked}
-                    onCommit={(x) =>
-                      p.onCommand({
-                        type: 'transform',
-                        id: clip.id,
-                        transform: { ...clip.transform, x },
-                      })
-                    }
-                  />
-                  <NumberField
-                    label="세로 위치"
-                    value={clip.transform.y}
-                    min={-1}
-                    max={1}
-                    step={0.05}
-                    disabled={p.locked}
-                    onCommit={(y) =>
-                      p.onCommand({
-                        type: 'transform',
-                        id: clip.id,
-                        transform: { ...clip.transform, y },
-                      })
-                    }
-                  />
+                    배치 초기화
+                  </button>
                 </div>
-                <button
-                  disabled={p.locked}
-                  onClick={() =>
-                    p.onCommand({
-                      type: 'transform',
-                      id: clip.id,
-                      transform: { fit: 'contain', scale: 1, x: 0, y: 0 },
-                    })
-                  }
-                >
-                  배치 초기화
-                </button>
               </>
             ) : (
               <div className="inspector-empty">

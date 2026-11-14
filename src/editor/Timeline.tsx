@@ -265,8 +265,8 @@ export function Timeline(p: Props) {
                     <span>⌁ {asset.hasAudio ? '원본 오디오 · 연결됨' : '무음'}</span>
                     <span className="link-icon">⛓</span>
                   </div>
-                  {trimHandle(clip.id, 'in')}
-                  {trimHandle(clip.id, 'out')}
+                  {p.selectedIds.length < 2 && trimHandle(clip.id, 'in')}
+                  {p.selectedIds.length < 2 && trimHandle(clip.id, 'out')}
                 </div>
               );
             })}

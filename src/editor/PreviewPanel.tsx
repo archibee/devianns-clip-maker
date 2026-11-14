@@ -15,7 +15,8 @@ import { PanelTitle } from './Panel';
 type Props = {
   project: Project;
   selected?: string;
-  onTransform: (id: string, transform: Transform) => void;
+  selectedIds: string[];
+  onTransform: (id: string, transform: Transform, mode: PreviewTool) => void;
   playback: PlaybackService;
   state: PlaybackState;
   locked: boolean;
@@ -23,6 +24,7 @@ type Props = {
   onToggle: () => void;
 };
 export function PreviewPanel(p: Props) {
+  const selectionKey = JSON.stringify([...p.selectedIds].sort());
   const [tool, setTool] = useState<PreviewTool>();
   const cropDraft = useRef<{ id: string; original: Transform; transform: Transform } | undefined>(
     undefined,
@@ -37,7 +39,7 @@ export function PreviewPanel(p: Props) {
   useEffect(() => {
     cropDraft.current = undefined;
     p.playback.previewTransform();
-  }, [p.selected, clip?.transform, p.playback]);
+  }, [p.selected, selectionKey, clip?.transform, p.playback]);
   useEffect(() => {
     if (cropDraft.current) {
       cropDraft.current = undefined;
@@ -72,7 +74,7 @@ export function PreviewPanel(p: Props) {
                   pending?.id === clip.id &&
                   pending.original === clip.transform
                 ) {
-                  p.onTransform(clip.id, pending.transform);
+                  p.onTransform(clip.id, pending.transform, 'crop');
                 } else p.playback.previewTransform();
                 cropDraft.current = undefined;
                 setTool(tool === mode ? undefined : mode);
@@ -82,7 +84,9 @@ export function PreviewPanel(p: Props) {
             </button>
           ))}
         </div>
-        <span className="quality-badge">½ 해상도</span>
+        <span className="quality-badge">
+          {p.selectedIds.length > 1 ? `${p.selectedIds.length}개 공통 적용 · ` : ''}½ 해상도
+        </span>
       </PanelTitle>
       <div className="preview-stage">
         <div
@@ -106,13 +110,15 @@ export function PreviewPanel(p: Props) {
             !p.locked &&
             !p.state.playing && (
               <PreviewTransformOverlay
-                key={clip.id + tool + current.sourceKey + JSON.stringify(clip.transform)}
+                key={
+                  selectionKey + clip.id + tool + current.sourceKey + JSON.stringify(clip.transform)
+                }
                 mode={tool}
                 transform={clip.transform}
                 asset={asset}
                 width={size.width}
                 height={size.height}
-                onCommit={(t) => p.onTransform(clip.id, t)}
+                onCommit={(t) => p.onTransform(clip.id, t, tool)}
                 onCropDraft={(t) => {
                   cropDraft.current = { id: clip.id, original: clip.transform, transform: t };
                   p.playback.previewTransform(clip.id, t);
