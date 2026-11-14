@@ -6,6 +6,7 @@ export function useShortcuts({
   toggle,
   seekFrame,
   split,
+  merge,
   remove,
   undo,
   redo,
@@ -17,6 +18,7 @@ export function useShortcuts({
   toggle: () => void;
   seekFrame: (delta: number) => void;
   split: () => void;
+  merge: () => void;
   remove: () => void;
   undo: () => void;
   redo: () => void;
@@ -59,6 +61,9 @@ export function useShortcuts({
         } else if ((e.key.toLowerCase() === 's' || (e.key === '1' && !e.shiftKey)) && !e.repeat) {
           e.preventDefault();
           split();
+        } else if (e.key === '3' && !e.shiftKey && !e.repeat) {
+          e.preventDefault();
+          merge();
         } else if (
           e.key === 'Delete' ||
           e.key === 'Backspace' ||
@@ -71,5 +76,5 @@ export function useShortcuts({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [locked, modal, toggle, seekFrame, split, remove, undo, redo, copyCue, pasteCue]);
+  }, [locked, modal, toggle, seekFrame, split, merge, remove, undo, redo, copyCue, pasteCue]);
 }

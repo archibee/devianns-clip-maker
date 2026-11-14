@@ -1,5 +1,5 @@
 import { prepareLocalFonts } from '../render/local-fonts';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AssetPanel } from '../editor/AssetPanel';
 import { ExportDialog } from '../editor/ExportDialog';
 import { Inspector, NumberField } from '../editor/Inspector';
@@ -7,6 +7,7 @@ import { Dialog } from '../editor/Panel';
 import { PreviewPanel } from '../editor/PreviewPanel';
 import { Timeline } from '../editor/Timeline';
 import { Toolbar } from '../editor/Toolbar';
+import { Toast } from '../editor/Toast';
 import { useShortcuts } from '../editor/useShortcuts';
 import { ExportService, type ExportState } from '../export/service';
 import { MediaRegistry } from '../media/registry';
@@ -60,6 +61,7 @@ export function App() {
   const [importing, setImporting] = useState(false);
   const importRef = useRef(false);
   const [message, setMessage] = useState<string>();
+  const dismissMessage = useCallback(() => setMessage(undefined), []);
   const [notice, setNotice] = useState('영상 파일은 서버로 전송되지 않습니다.');
   const [modal, setModal] = useState<'export' | 'help' | 'recover'>();
   const [recovery, setRecovery] = useState<Project>();
@@ -99,6 +101,10 @@ export function App() {
   }
   function split() {
     command({ type: 'split', timeUs: playState.timeUs });
+  }
+  function merge() {
+    if (selectedCue || selectedIds.length < 2) return;
+    command({ type: 'merge', ids: selectedIds });
   }
   function remove() {
     if (selectedCue) {
@@ -197,6 +203,7 @@ export function App() {
     toggle,
     seekFrame,
     split,
+    merge,
     remove,
     undo,
     redo,
@@ -390,20 +397,12 @@ export function App() {
           if (file) void reconnect(file);
         }}
       />
-      {!supported && (
-        <div className="banner-error" role="alert">
-          HTTPS 또는 localhost의 최신 Chrome·Edge에서 여세요. 이 환경은 WebCodecs/OffscreenCanvas를
-          지원하지 않습니다.
-        </div>
-      )}
-      {message && (
-        <div className="banner-error" role="alert">
-          <span>{message}</span>
-          <button aria-label="알림 닫기" onClick={() => setMessage(undefined)}>
-            ×
-          </button>
-        </div>
-      )}
+      <div className="toast-region" role="region" aria-label="알림">
+        {!supported && (
+          <Toast message="HTTPS 또는 localhost의 최신 Chrome·Edge에서 여세요. 이 환경은 WebCodecs/OffscreenCanvas를 지원하지 않습니다." />
+        )}
+        {message && <Toast message={message} onDismiss={dismissMessage} />}
+      </div>
       <main className="workspace" aria-busy={locked}>
         <AssetPanel
           project={project}
@@ -441,7 +440,7 @@ export function App() {
         />
         <Timeline
           selectedIds={selectedIds}
-          onMerge={() => command({ type: 'merge', ids: selectedIds })}
+          onMerge={merge}
           project={project}
           selected={selected}
           selectedCue={selectedCue}
