@@ -480,6 +480,7 @@ small {
   justify-content: center;
   padding: 22px 25px;
   position: relative;
+  overflow: hidden;
   background: #151515;
   background-image: radial-gradient(#61616133 1px, transparent 1px);
   background-size: 10px 10px;
@@ -492,7 +493,7 @@ small {
   height: auto;
   width: 100%;
   max-width: 960px;
-  overflow: hidden;
+  overflow: visible;
 }
 .preview-surface canvas {
   display: block;
@@ -1778,7 +1779,7 @@ small {
   position: absolute;
   inset: 0;
   touch-action: none;
-  overflow: hidden;
+  overflow: visible;
   z-index: 4;
 }
 .tool-move {
@@ -1843,6 +1844,16 @@ small {
   top: calc(50% - 5px);
   cursor: ew-resize;
 }
+.transform-overlay > .resize-handle {
+  right: auto;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+.resize-handle.proxy {
+  background: var(--accent);
+  box-shadow: 0 0 0 1px #000;
+}
 .crop-selection {
   position: absolute;
   border: 2px solid #ffffff;
@@ -1863,3 +1874,11 @@ small {
     grid-template-rows: 260px 350px 215px auto;
   }
 }
+.cue-batch-note {
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.cue-batch-note p { margin: 6px 0; line-height: 1.5; }
+.cue-batch-note small { opacity: .8; }

@@ -7,13 +7,15 @@ type Props = {
   project: Project;
   cue: Cue;
   selected: boolean;
+  multiple: boolean;
   locked: boolean;
   zoom: number;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, additive?: boolean) => void;
   onCommand: (command: Command) => void;
 };
 export function SubtitleBlock(p: Props) {
   const element = useRef<HTMLDivElement>(null);
+  const pointerSelected = useRef(false);
   const gesture = useRef<{ pointerId: number; x: number; mode: CueGesture; cue: Cue } | null>(null);
   const [draft, setDraft] = useState<{ startUs: number; endUs: number }>();
   const range = draft ?? p.cue;
@@ -34,8 +36,10 @@ export function SubtitleBlock(p: Props) {
     if (p.locked || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
-    p.onSelect(p.cue.id);
+    pointerSelected.current = true;
+    p.onSelect(p.cue.id, e.ctrlKey || e.metaKey);
     element.current!.focus();
+    if (e.ctrlKey || e.metaKey) return;
     element.current!.setPointerCapture(e.pointerId);
     gesture.current = { pointerId: e.pointerId, x: e.clientX, mode, cue: p.cue };
   }
@@ -55,8 +59,12 @@ export function SubtitleBlock(p: Props) {
       aria-label={`자막: ${p.cue.text || '(빈 자막)'}`}
       aria-pressed={p.selected}
       title={p.cue.text}
-      onClick={() => {
-        if (!p.locked) p.onSelect(p.cue.id);
+      onClick={(e) => {
+        if (pointerSelected.current) {
+          pointerSelected.current = false;
+          return;
+        }
+        if (!p.locked) p.onSelect(p.cue.id, e.ctrlKey || e.metaKey);
       }}
       style={{
         left: seconds(range.startUs) * p.zoom,
@@ -77,27 +85,32 @@ export function SubtitleBlock(p: Props) {
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          p.onSelect(p.cue.id);
+          pointerSelected.current = false;
+          p.onSelect(p.cue.id, e.ctrlKey || e.metaKey);
         } else if (e.key === 'Escape') clear();
       }}
     >
       <span className="subtitle-label">T {p.cue.text}</span>
-      <button
-        className="trim-handle in"
-        aria-label="자막 시작 트림 핸들"
-        disabled={p.locked}
-        onPointerDown={(e) => begin(e, 'start')}
-      >
-        ‖
-      </button>
-      <button
-        className="trim-handle out"
-        aria-label="자막 끝 트림 핸들"
-        disabled={p.locked}
-        onPointerDown={(e) => begin(e, 'end')}
-      >
-        ‖
-      </button>
+      {!p.multiple && (
+        <>
+          <button
+            className="trim-handle in"
+            aria-label="자막 시작 트림 핸들"
+            disabled={p.locked}
+            onPointerDown={(e) => begin(e, 'start')}
+          >
+            ‖
+          </button>
+          <button
+            className="trim-handle out"
+            aria-label="자막 끝 트림 핸들"
+            disabled={p.locked}
+            onPointerDown={(e) => begin(e, 'end')}
+          >
+            ‖
+          </button>
+        </>
+      )}
     </div>
   );
 }

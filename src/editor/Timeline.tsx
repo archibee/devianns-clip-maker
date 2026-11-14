@@ -12,9 +12,10 @@ type Props = {
   selectedIds: string[];
   onMerge: () => void;
   selectedCue?: string;
+  selectedCueIds: string[];
   locked: boolean;
   onSelect: (id: string, additive?: boolean) => void;
-  onSelectCue: (id: string) => void;
+  onSelectCue: (id: string, additive?: boolean) => void;
   onSeek: (us: number) => void;
   onCommand: (command: Command) => void;
   onSplit: () => void;
@@ -139,7 +140,7 @@ export function Timeline(p: Props) {
             ✂ 분할
           </button>
           <button
-            disabled={p.locked || (!p.selected && !p.selectedCue)}
+            disabled={p.locked || (!p.selected && !p.selectedCueIds.length)}
             onClick={p.onDelete}
             title="선택 클립 삭제 (Delete)"
           >
@@ -283,7 +284,8 @@ export function Timeline(p: Props) {
                 key={c.id}
                 project={p.project}
                 cue={c}
-                selected={p.selectedCue === c.id}
+                selected={p.selectedCueIds.includes(c.id)}
+                multiple={p.selectedCueIds.length > 1}
                 locked={p.locked}
                 zoom={zoom}
                 onSelect={p.onSelectCue}

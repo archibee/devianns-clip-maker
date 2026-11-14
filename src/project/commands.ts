@@ -5,12 +5,15 @@ import {
   newId,
   layout,
   mediaLayout,
+  CUE_STYLE_KEYS,
   type Asset,
   type Clip,
   type Cue,
+  type CueStyle,
   type Project,
 } from './model';
 import { validateCueRange } from './subtitles';
+import { parseProject } from './validation';
 
 export type Command =
   | { type: 'assets'; assets: Asset[] }
@@ -26,6 +29,8 @@ export type Command =
   | { type: 'cue'; cue: Cue }
   | { type: 'cueRange'; id: string; startUs: number; endUs: number }
   | { type: 'deleteCue'; id: string }
+  | { type: 'deleteCues'; ids: string[] }
+  | { type: 'cueStyle'; ids: string[]; patch: Partial<CueStyle> }
   | { type: 'replaceTimeline'; clips: Clip[]; subtitles: Cue[] }
   | { type: 'settings'; patch: Partial<Pick<Project, 'name' | 'aspect' | 'fps'>> };
 
@@ -239,6 +244,24 @@ export function applyCommand(p: Project, cmd: Command): Project {
     case 'deleteCue':
       result = { ...p, subtitles: p.subtitles.filter((c) => c.id !== cmd.id) };
       break;
+    case 'deleteCues':
+      result = { ...p, subtitles: p.subtitles.filter((c) => !cmd.ids.includes(c.id)) };
+      break;
+    case 'cueStyle': {
+      const patch = Object.fromEntries(
+        CUE_STYLE_KEYS.filter((key) => Object.prototype.hasOwnProperty.call(cmd.patch, key)).map(
+          (key) => [key, cmd.patch[key]],
+        ),
+      );
+      if (!Object.keys(patch).length || !p.subtitles.some((c) => cmd.ids.includes(c.id))) return p;
+      result = parseProject(
+        JSON.stringify({
+          ...p,
+          subtitles: p.subtitles.map((c) => (cmd.ids.includes(c.id) ? { ...c, ...patch } : c)),
+        }),
+      );
+      break;
+    }
     case 'settings':
       result = { ...p, ...cmd.patch };
       break;

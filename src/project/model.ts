@@ -39,6 +39,20 @@ export type Cue = {
   y: number;
   font?: { postscriptName: string; label: string };
 };
+export type CueStyle = Pick<
+  Cue,
+  'size' | 'color' | 'background' | 'colorOpacity' | 'backgroundOpacity' | 'x' | 'y' | 'font'
+>;
+export const CUE_STYLE_KEYS: readonly (keyof CueStyle)[] = [
+  'size',
+  'color',
+  'background',
+  'colorOpacity',
+  'backgroundOpacity',
+  'x',
+  'y',
+  'font',
+];
 export type Project = {
   schemaVersion: 1;
   id: string;

@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { MIN_CROP_SIZE, type Asset, type Transform } from '../project/model';
 import { imageRect } from '../render/compositor';
+import { controlRect } from './transform-controls';
 
 export type PreviewTool = 'crop' | 'move' | 'resize';
 type Box = { x: number; y: number; width: number; height: number };
@@ -14,6 +15,39 @@ export function PreviewTransformOverlay(p: {
   onCommit: (t: Transform) => void;
   onCropDraft: (t: Transform) => void;
 }) {
+  const overlay = useRef<HTMLDivElement>(null);
+  const [space, setSpace] = useState({
+    bounds: { x: 0, y: 0, width: p.width, height: p.height },
+    minWidth: 32,
+    minHeight: 32,
+  });
+  useLayoutEffect(() => {
+    const element = overlay.current,
+      stage = element?.closest('.preview-stage');
+    if (!element || !stage) return;
+    const update = () => {
+      const frame = element.getBoundingClientRect(),
+        room = stage.getBoundingClientRect();
+      if (!frame.width || !frame.height) return;
+      const sx = p.width / frame.width,
+        sy = p.height / frame.height;
+      setSpace({
+        bounds: {
+          x: (room.left + 8 - frame.left) * sx,
+          y: (room.top + 8 - frame.top) * sy,
+          width: Math.max(0, room.width - 16) * sx,
+          height: Math.max(0, room.height - 16) * sy,
+        },
+        minWidth: 32 * sx,
+        minHeight: 32 * sy,
+      });
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    observer.observe(stage);
+    update();
+    return () => observer.disconnect();
+  }, [p.width, p.height]);
   const drag = useRef<
     { x: number; y: number; transform: Transform; handle: string; selection: Box } | undefined
   >(undefined);
@@ -39,6 +73,7 @@ export function PreviewTransformOverlay(p: {
           cropPreview,
         )
       : rect;
+  const controls = controlRect(outline, space.bounds, space.minWidth, space.minHeight);
   function updateCrop(box: Box) {
     setSelection(box);
     const nextCrop = {
@@ -66,6 +101,7 @@ export function PreviewTransformOverlay(p: {
   }
   return (
     <div
+      ref={overlay}
       className={`transform-overlay tool-${p.mode}`}
       aria-label={`${p.mode} 영상 조정`}
       onPointerDown={(e) => {
@@ -146,15 +182,29 @@ export function PreviewTransformOverlay(p: {
           width: `${(outline.width / p.width) * 100}%`,
           height: `${(outline.height / p.height) * 100}%`,
         }}
-      >
-        {p.mode !== 'move' &&
-          (p.mode === 'crop'
-            ? ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
-            : ['nw', 'ne', 'sw', 'se']
-          ).map((handle) => (
-            <span key={handle} data-handle={handle} className={`resize-handle ${handle}`} />
-          ))}
-      </div>
+      />
+      {p.mode !== 'move' &&
+        (p.mode === 'crop'
+          ? ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
+          : ['nw', 'ne', 'sw', 'se']
+        ).map((handle) => {
+          const horizontal = handle.includes('w') ? 0 : handle.includes('e') ? 1 : 0.5;
+          const vertical = handle.includes('n') ? 0 : handle.includes('s') ? 1 : 0.5;
+          const x = controls.x + horizontal * controls.width,
+            y = controls.y + vertical * controls.height;
+          const proxy =
+            Math.abs(x - (outline.x + horizontal * outline.width)) > 0.01 ||
+            Math.abs(y - (outline.y + vertical * outline.height)) > 0.01;
+          return (
+            <span
+              key={handle}
+              data-handle={handle}
+              className={`resize-handle ${handle}${proxy ? ' proxy' : ''}`}
+              title={proxy ? '화면 밖 조절점을 편집 공간 안에 표시합니다' : '영상 테두리 조절'}
+              style={{ left: `${(x / p.width) * 100}%`, top: `${(y / p.height) * 100}%` }}
+            />
+          );
+        })}
     </div>
   );
 }

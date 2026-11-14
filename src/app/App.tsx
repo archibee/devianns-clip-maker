@@ -57,6 +57,7 @@ export function App() {
   const [exporter] = useState(() => new ExportService(setExportState));
   const [selected, setSelected] = useState<string>();
   const [selectedCue, setSelectedCue] = useState<string>();
+  const [selectedCueIds, setSelectedCueIds] = useState<string[]>([]);
   const [inspectorTab, setInspectorTab] = useState<'clip' | 'subtitle'>('clip');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const cueClipboard = useRef<
@@ -95,6 +96,7 @@ export function App() {
       const next = historyReducer(historyRef.current, action);
       if (next === historyRef.current) return false;
       if (action.type === 'load') {
+        setSelectedCueIds([]);
         cueClipboard.current = undefined;
         pendingSeek.current = undefined;
       }
@@ -136,6 +138,7 @@ export function App() {
     setSelected(undefined);
     setSelectedIds([]);
     setSelectedCue(undefined);
+    setSelectedCueIds([]);
     setInspectorTab('clip');
     setMessage(undefined);
     setModal(undefined);
@@ -149,9 +152,10 @@ export function App() {
     command({ type: 'merge', ids: selectedIds });
   }
   function remove() {
-    if (selectedCue) {
-      command({ type: 'deleteCue', id: selectedCue });
+    if (selectedCueIds.length) {
+      command({ type: 'deleteCues', ids: selectedCueIds });
       setSelectedCue(undefined);
+      setSelectedCueIds([]);
     } else if (selected) {
       command({ type: 'deleteClips', ids: selectedIds.length ? selectedIds : [selected] });
       setSelectedIds([]);
@@ -170,16 +174,26 @@ export function App() {
     const row = layout(project).find((c) => c.clip.id === id);
     if (row) playback.seek(row.startUs);
     setSelectedCue(undefined);
+    setSelectedCueIds([]);
     setInspectorTab('clip');
   }
-  function selectCue(id?: string) {
+  function selectCue(id?: string, additive = false) {
     playback.pause();
-    setSelectedCue(id);
+    const ids = !id
+      ? []
+      : additive
+        ? selectedCueIds.includes(id)
+          ? selectedCueIds.filter((value) => value !== id)
+          : [...selectedCueIds, id]
+        : [id];
+    setSelectedCueIds(ids);
+    setSelectedCue(ids.length === 1 ? ids[0] : undefined);
     setSelectedIds([]);
     setSelected(undefined);
     setInspectorTab('subtitle');
   }
   function copyCue() {
+    if (selectedCueIds.length > 1) return false;
     const cue = project.subtitles.find((c) => c.id === selectedCue);
     if (!cue) {
       const clips = project.clips.filter((c) => selectedIds.includes(c.id) || c.id === selected);
@@ -202,6 +216,7 @@ export function App() {
         setSelectedIds(ids);
         setSelected(ids.at(-1));
         setSelectedCue(undefined);
+        setSelectedCueIds([]);
         setInspectorTab('clip');
         pendingSeek.current =
           playState.timeUs + copied.clips.reduce((n, c) => n + c.outUs - c.inUs, 0);
@@ -253,6 +268,9 @@ export function App() {
     pasteCue,
   });
   useEffect(() => {
+    const cueIds = selectedCueIds.filter((id) => project.subtitles.some((c) => c.id === id));
+    if (cueIds.length !== selectedCueIds.length) setSelectedCueIds(cueIds);
+    setSelectedCue(cueIds.length === 1 ? cueIds[0] : undefined);
     if (selected && !project.clips.some((c) => c.id === selected)) setSelected(undefined);
     setSelectedIds((ids) =>
       ids.every((id) => project.clips.some((c) => c.id === id))
@@ -261,7 +279,7 @@ export function App() {
     );
     if (selectedCue && !project.subtitles.some((c) => c.id === selectedCue))
       setSelectedCue(undefined);
-  }, [project, selected, selectedCue]);
+  }, [project, selected, selectedCue, selectedCueIds]);
   useEffect(() => {
     let active = true;
     void prepareLocalFonts(project)
@@ -469,6 +487,7 @@ export function App() {
           onToggle={toggle}
         />
         <Inspector
+          selectedCueIds={selectedCueIds}
           project={project}
           selected={selected}
           selectedCue={selectedCue}
@@ -481,6 +500,7 @@ export function App() {
           onSeek={(us) => playback.seek(us)}
         />
         <Timeline
+          selectedCueIds={selectedCueIds}
           autoCutUnavailable={autoCutReason}
           onAutoCut={() => {
             if (!locked && !autoCutUnavailable(project, registry)) {
