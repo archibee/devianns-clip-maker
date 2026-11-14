@@ -2,7 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Project } from '../../../src/project/model';
 import { duration, seconds, timecode } from '../../../src/project/model';
 import type { MediaRegistry } from '../../../src/media/registry';
-import { PRESETS, optionsError, type Analysis, type Options, type Progress } from './contracts';
+import {
+  PRESETS,
+  MARGIN_PRESETS,
+  MARGIN_FIELDS,
+  DEFAULT_OPTIONS,
+  optionsError,
+  type Analysis,
+  type Options,
+  type Progress,
+} from './contracts';
 import { AnalysisClient } from './client';
 import { buildProject, removals, union } from './cut-plan';
 import { AutoCutPreview } from './Preview';
@@ -26,8 +35,9 @@ const fields: { key: keyof Options; label: string; min: number; max: number; ste
 export default function AutoCutDialog(p: Props) {
   const [snapshot] = useState(() => p.project);
   const [client] = useState(() => new AnalysisClient());
-  const [options, setOptions] = useState<Options>({ ...PRESETS.medium.options });
+  const [options, setOptions] = useState<Options>({ ...DEFAULT_OPTIONS });
   const [preset, setPreset] = useState('medium');
+  const [marginPreset, setMarginPreset] = useState('medium');
   const [analysis, setAnalysis] = useState<Analysis>();
   const [retained, setRetained] = useState<number[]>([]);
   const [status, setStatus] = useState<'idle' | 'analyzing' | 'ready' | 'applying'>('idle');
@@ -196,7 +206,7 @@ export default function AutoCutDialog(p: Props) {
                 value={preset}
                 onChange={(event) => {
                   setPreset(event.target.value);
-                  update({ ...PRESETS[event.target.value].options });
+                  update({ ...options, ...PRESETS[event.target.value].options });
                 }}
               >
                 {Object.entries(PRESETS).map(([key, value]) => (
@@ -209,8 +219,35 @@ export default function AutoCutDialog(p: Props) {
                 </option>
               </select>
             </label>
-            <p>보존 강도가 높을수록 약한 음성과 앞뒤 소리를 더 남깁니다.</p>
+            <p>{PRESETS[preset]?.description ?? '음성 판정 값을 직접 조절한 설정입니다.'}</p>
+            <p>음성 보존 강도가 높을수록 약한 음성도 더 남깁니다. 앞뒤 여백은 별도로 설정합니다.</p>
             <p>확률은 0–1의 판정 기준입니다. 0.40은 40%이며, 실제 인식 정확도를 뜻하지 않습니다.</p>
+            <label className="field">
+              편집 여백
+              <select
+                aria-label="편집 여백"
+                disabled={busy}
+                value={marginPreset}
+                onChange={(event) => {
+                  setMarginPreset(event.target.value);
+                  update({ ...options, ...MARGIN_PRESETS[event.target.value].options });
+                }}
+              >
+                {Object.entries(MARGIN_PRESETS).map(([key, value]) => (
+                  <option key={key} value={key}>
+                    {value.label}
+                  </option>
+                ))}
+                <option value="custom" disabled>
+                  직접 설정
+                </option>
+              </select>
+            </label>
+            <p>
+              {MARGIN_PRESETS[marginPreset]?.description ??
+                '앞뒤 여백과 최소 삭제 길이를 직접 조절한 설정입니다.'}{' '}
+              여백은 빈 화면을 넣는 것이 아니라 원본 영상과 소리를 남기는 길이입니다.
+            </p>
             <div className="auto-cut-fields">
               {fields.map((field) => (
                 <label className="field" key={field.key}>
@@ -224,7 +261,8 @@ export default function AutoCutDialog(p: Props) {
                     value={Number.isFinite(options[field.key]) ? options[field.key] : ''}
                     disabled={busy}
                     onChange={(event) => {
-                      setPreset('custom');
+                      if (MARGIN_FIELDS.includes(field.key)) setMarginPreset('custom');
+                      else setPreset('custom');
                       update({
                         ...options,
                         [field.key]: event.target.value === '' ? NaN : Number(event.target.value),
