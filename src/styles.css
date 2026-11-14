@@ -861,20 +861,34 @@ small {
   background: #191919;
 }
 .timeline-content {
+  --timeline-row-height: 68px;
+  --timeline-block-height: 60px;
+  --timeline-block-top: 4px;
   position: relative;
   min-height: 185px;
-  padding-top: 34px;
+  padding-top: 0;
   padding-left: 72px;
 }
 .ruler {
-  position: absolute;
+  position: sticky;
   top: 0;
-  left: 72px;
+  z-index: 5;
   height: 34px;
   background: #282828;
   border-bottom: 1px solid #505050;
   cursor: crosshair;
   touch-action: none;
+}
+.ruler:after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: -1px;
+  left: -72px;
+  width: 72px;
+  background: #282828;
+  border-bottom: 1px solid #505050;
+  pointer-events: none;
 }
 .ruler > span {
   position: absolute;
@@ -1818,7 +1832,6 @@ small {
 }
 .timeline-content {
   min-height: 100px;
-  padding-top: 26px;
 }
 .ruler {
   height: 26px;
@@ -1842,26 +1855,28 @@ small {
   margin-top: 2px;
 }
 .track-bed {
-  height: 76px;
+  height: var(--timeline-row-height);
   background: linear-gradient(
     to bottom,
     #262626 0,
-    #262626 47px,
-    #4e4e4e 47px,
-    #4e4e4e 48px,
-    #2c2c2c 48px,
-    #2c2c2c 75px,
-    #4e4e4e 75px
+    #262626 39px,
+    #4e4e4e 39px,
+    #4e4e4e 40px,
+    #2c2c2c 40px,
+    #2c2c2c 67px,
+    #4e4e4e 67px
   );
 }
-.timeline-clip {
-  top: 4px;
-  height: 67px;
+.timeline-clip,
+.timeline-row .subtitle-block {
+  top: var(--timeline-block-top);
+  height: var(--timeline-block-height);
 }
 .clip-video {
-  height: 42px;
-  padding-top: 5px;
-  padding-bottom: 4px;
+  height: 35px;
+  padding-top: 4px;
+  padding-bottom: 3px;
+  gap: 3px;
 }
 .clip-audio {
   height: 23px;
@@ -2005,7 +2020,7 @@ small {
 
 .timeline-row {
   position: relative;
-  height: 76px;
+  height: var(--timeline-row-height);
   border-bottom: 1px solid var(--line);
 }
 .timeline-row.active {
@@ -2016,7 +2031,7 @@ small {
   position: absolute;
   right: 100%;
   width: 72px;
-  height: 76px;
+  height: var(--timeline-row-height);
   border-radius: 0;
 }
 .lane-label[aria-pressed='true'] {
@@ -2024,8 +2039,6 @@ small {
   background: #37322a;
 }
 .timeline-row .subtitle-block {
-  top: 8px;
-  height: 58px;
   display: flex;
   align-items: center;
 }
