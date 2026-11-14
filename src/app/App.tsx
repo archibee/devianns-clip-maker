@@ -204,6 +204,29 @@ export function App() {
     cueClipboard.current = { kind: 'cue', cue: structuredClone(cue) };
     return true;
   }
+  function selectAll() {
+    if (selectedCueIds.some((id) => project.subtitles.some((c) => c.id === id))) {
+      playback.pause();
+      const ids = project.subtitles.map((c) => c.id);
+      setSelectedCueIds(ids);
+      setSelectedCue(ids.length === 1 ? ids[0] : undefined);
+      setSelectedIds([]);
+      setSelected(undefined);
+      setInspectorTab('subtitle');
+      return true;
+    }
+    if (project.clips.some((c) => selectedIds.includes(c.id) || c.id === selected)) {
+      playback.pause();
+      const ids = project.clips.map((c) => c.id);
+      setSelectedIds(ids);
+      setSelected(selected && ids.includes(selected) ? selected : ids.at(-1));
+      setSelectedCueIds([]);
+      setSelectedCue(undefined);
+      setInspectorTab('clip');
+      return true;
+    }
+    return false;
+  }
   function pasteCue() {
     const copied = cueClipboard.current;
     if (!copied) return false;
@@ -255,6 +278,7 @@ export function App() {
     command({ type: 'insert', assetId, index: index < 0 ? rows.length : index });
   }
   useShortcuts({
+    selectAll,
     locked,
     modal: !!modal,
     toggle,

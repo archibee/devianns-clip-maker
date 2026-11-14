@@ -12,6 +12,7 @@ export function useShortcuts({
   redo,
   copyCue,
   pasteCue,
+  selectAll,
 }: {
   locked: boolean;
   modal: boolean;
@@ -24,6 +25,7 @@ export function useShortcuts({
   redo: () => void;
   copyCue: () => boolean;
   pasteCue: () => boolean;
+  selectAll: () => boolean;
 }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -35,7 +37,14 @@ export function useShortcuts({
         target.closest('input,textarea,select,[contenteditable="true"],[role="dialog"]')
       )
         return;
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'c') {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'a') {
+        if (selectAll()) e.preventDefault();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.altKey &&
+        !e.shiftKey &&
+        e.key.toLowerCase() === 'c'
+      ) {
         if (copyCue()) e.preventDefault();
       } else if (
         (e.ctrlKey || e.metaKey) &&
@@ -76,5 +85,18 @@ export function useShortcuts({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [locked, modal, toggle, seekFrame, split, merge, remove, undo, redo, copyCue, pasteCue]);
+  }, [
+    locked,
+    modal,
+    toggle,
+    seekFrame,
+    split,
+    merge,
+    remove,
+    undo,
+    redo,
+    copyCue,
+    pasteCue,
+    selectAll,
+  ]);
 }
