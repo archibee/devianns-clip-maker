@@ -29,7 +29,8 @@ export function PreviewPanel(p: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     cropDraft.current = undefined;
-  }, [p.selected, clip?.transform]);
+    p.playback.previewTransform();
+  }, [p.selected, clip?.transform, p.playback]);
   useEffect(() => {
     if (canvas.current) p.playback.attach(canvas.current);
   }, [p.playback]);
@@ -51,8 +52,9 @@ export function PreviewPanel(p: Props) {
                   clip &&
                   pending?.id === clip.id &&
                   pending.original === clip.transform
-                )
+                ) {
                   p.onTransform(clip.id, pending.transform);
+                } else p.playback.previewTransform();
                 cropDraft.current = undefined;
                 setTool(tool === mode ? undefined : mode);
               }}
@@ -66,7 +68,10 @@ export function PreviewPanel(p: Props) {
       <div className="preview-stage">
         <div
           className="preview-surface"
-          style={{ aspectRatio: p.project.aspect.replace(':', '/') }}
+          style={{
+            aspectRatio: p.project.aspect.replace(':', '/'),
+            width: `min(100%, calc(100cqh * ${size.width / size.height}))`,
+          }}
         >
           <canvas
             ref={canvas}
@@ -86,6 +91,7 @@ export function PreviewPanel(p: Props) {
               onCommit={(t) => p.onTransform(clip.id, t)}
               onCropDraft={(t) => {
                 cropDraft.current = { id: clip.id, original: clip.transform, transform: t };
+                p.playback.previewTransform(clip.id, t);
               }}
             />
           )}

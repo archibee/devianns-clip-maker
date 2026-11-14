@@ -17,7 +17,6 @@ export function Toolbar(p: Props) {
   return (
     <header className="toolbar">
       <div className="brand">
-        <span className="brand-mark">▰</span>
         <span>
           Devianns <strong>Clip Maker</strong>
         </span>

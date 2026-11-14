@@ -18,6 +18,7 @@ export function PreviewTransformOverlay(p: {
     { x: number; y: number; transform: Transform; handle: string; selection: Box } | undefined
   >(undefined);
   const [draft, setDraft] = useState<Transform>();
+  const [cropPreview, setCropPreview] = useState<Transform>();
   const [selection, setSelection] = useState<Box>({ x: 0, y: 0, width: 1, height: 1 });
   const t = draft ?? p.transform;
   const crop = t.crop ?? { x: 0, y: 0, width: 1, height: 1 };
@@ -29,13 +30,9 @@ export function PreviewTransformOverlay(p: {
     t,
   );
   const outline =
-    p.mode === 'crop'
-      ? {
-          x: rect.x + selection.x * rect.width,
-          y: rect.y + selection.y * rect.height,
-          width: selection.width * rect.width,
-          height: selection.height * rect.height,
-        }
+    p.mode === 'crop' && cropPreview
+      ? imageRect(p.asset.width * cropPreview.crop!.width, p.asset.height * cropPreview.crop!.height,
+          p.width, p.height, cropPreview)
       : rect;
   function updateCrop(box: Box) {
     setSelection(box);
@@ -52,13 +49,15 @@ export function PreviewTransformOverlay(p: {
       p.height,
       { ...p.transform, scale: 1, x: 0, y: 0 },
     );
-    p.onCropDraft({
+    const next: Transform = {
       ...p.transform,
       crop: nextCrop,
       scale: clamp((rect.width * box.width) / fitted.width, 0.1, 5),
       x: clamp((rect.x + (box.x + box.width / 2) * rect.width - p.width / 2) / p.width, -1, 1),
       y: clamp((rect.y + (box.y + box.height / 2) * rect.height - p.height / 2) / p.height, -1, 1),
-    });
+    };
+    setCropPreview(next);
+    p.onCropDraft(next);
   }
   return (
     <div
