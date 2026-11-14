@@ -1,4 +1,11 @@
-import { mediaLayout, newId, type Clip, type Project } from '../../../src/project/model';
+import {
+  mediaLayout,
+  newId,
+  clipLane,
+  laneCount,
+  type Clip,
+  type Project,
+} from '../../../src/project/model';
 import { parseProject } from '../../../src/project/validation';
 import type { Range } from './contracts';
 
@@ -44,6 +51,13 @@ export function buildProject(
       '기존 자막을 제외하는 데 동의해야 적용할 수 있습니다. 원래 자막은 실행 취소로 복구할 수 있습니다.',
     );
   const ranges = union(keep);
+  if (!project.clips.length) throw new Error('남길 영상이 없습니다.');
+  if (new Set(project.clips.map(clipLane)).size > 1)
+    throw new Error('Auto Cut은 단일 영상 행만 지원합니다.');
+  const videoLane = clipLane(project.clips[0]);
+  const subtitleLane = videoLane + 1;
+  if (generateSubtitles && subtitleLane >= 32)
+    throw new Error('자동 자막을 생성하려면 영상 행 아래에 자막 행을 추가할 공간이 필요합니다.');
   const clips: Clip[] = [];
   let cursor = 0;
   for (const row of mediaLayout(project))
@@ -52,6 +66,7 @@ export function buildProject(
         end = Math.min(row.endUs, range.endUs);
       if (end <= start) continue;
       clips.push({
+        lane: videoLane,
         id: newId(),
         assetId: row.clip.assetId,
         inUs: row.clip.inUs + start - row.startUs,
@@ -68,6 +83,7 @@ export function buildProject(
   if (!clips.length) throw new Error('남길 영상이 없습니다. 후보를 보존하거나 다시 분석하세요.');
   const subtitles = generateSubtitles
     ? clips.map((clip) => ({
+        lane: subtitleLane,
         id: newId(),
         startUs: clip.startUs!,
         endUs: clip.startUs! + clip.outUs - clip.inUs,
@@ -81,5 +97,12 @@ export function buildProject(
     : dropSubtitles
       ? []
       : project.subtitles;
-  return parseProject(JSON.stringify({ ...project, clips, subtitles }));
+  return parseProject(
+    JSON.stringify({
+      ...project,
+      laneCount: Math.max(laneCount(project), generateSubtitles ? subtitleLane + 1 : 1),
+      clips,
+      subtitles,
+    }),
+  );
 }

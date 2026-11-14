@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   duration,
   layout,
-  resolve,
+  resolveAll,
   timecode,
   type Project,
   type Transform,
@@ -30,7 +30,7 @@ export function PreviewPanel(p: Props) {
     undefined,
   );
   const clip = p.project.clips.find((c) => c.id === p.selected);
-  const current = resolve(p.project, p.state.timeUs);
+  const current = resolveAll(p.project, p.state.timeUs).find((item) => item.clip.id === p.selected);
   const asset = p.project.assets.find(
     (a) => a.id === (current?.clip.id === clip?.id ? current?.clip.assetId : clip?.assetId),
   );

@@ -1,4 +1,12 @@
-import { duration, layout, cueErrors, MIN_CROP_SIZE, type Project } from './model';
+import {
+  duration,
+  layout,
+  cueErrors,
+  clipLane,
+  cueLane,
+  MIN_CROP_SIZE,
+  type Project,
+} from './model';
 
 export function parseProject(text: string): Project {
   if (text.length > 2_000_000) throw new Error('프로젝트 JSON은 2MB 이하만 지원합니다.');
@@ -134,9 +142,36 @@ export function parseProject(text: string): Project {
     )
       return fail();
   const result = p as Project;
+  if (
+    result.laneCount !== undefined &&
+    (!Number.isInteger(result.laneCount) || result.laneCount < 1 || result.laneCount > 32)
+  )
+    return fail();
+  for (const c of [...result.clips, ...result.subtitles])
+    if (
+      c.lane !== undefined &&
+      (!Number.isInteger(c.lane) ||
+        c.lane < 0 ||
+        c.lane >= 32 ||
+        (result.laneCount !== undefined && c.lane >= result.laneCount))
+    )
+      return fail();
   if (cueErrors(result).length) return fail();
   if (!Number.isSafeInteger(duration(result))) return fail();
   const rows = layout(result).sort((a, b) => a.startUs - b.startUs);
-  if (rows.some((c, i) => i > 0 && c.startUs < rows[i - 1].endUs)) return fail();
+  const blocks = [
+    ...rows.map((r) => ({ startUs: r.startUs, endUs: r.endUs, lane: clipLane(r.clip) })),
+    ...result.subtitles.map((c) => ({ ...c, lane: cueLane(c) })),
+  ];
+  for (let i = 0; i < blocks.length; i++)
+    if (
+      blocks
+        .slice(0, i)
+        .some(
+          (b) =>
+            b.lane === blocks[i].lane && b.startUs < blocks[i].endUs && b.endUs > blocks[i].startUs,
+        )
+    )
+      throw new Error('같은 타임라인 행에 블록이 겹칩니다. 빈 위치나 다른 행을 선택하세요.');
   return result;
 }

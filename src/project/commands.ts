@@ -5,6 +5,9 @@ import {
   newId,
   layout,
   mediaLayout,
+  clipLane,
+  cueLane,
+  laneCount,
   CUE_STYLE_KEYS,
   type Asset,
   type Clip,
@@ -17,7 +20,11 @@ import { parseProject } from './validation';
 
 export type Command =
   | { type: 'assets'; assets: Asset[] }
-  | { type: 'insert'; assetId: string; index: number }
+  | { type: 'insert'; assetId: string; index: number; lane?: number; timeUs?: number }
+  | { type: 'addLane' }
+  | { type: 'placeBlock'; id: string; lane: number; timeUs: number }
+  | { type: 'deleteBlocks'; ids: string[] }
+  | { type: 'pasteBlocks'; clips: Clip[]; cues: Cue[]; timeUs: number; lane: number }
   | { type: 'split'; timeUs: number }
   | { type: 'delete'; id: string }
   | { type: 'deleteClips'; ids: string[] }
@@ -32,18 +39,112 @@ export type Command =
   | { type: 'deleteCue'; id: string }
   | { type: 'deleteCues'; ids: string[] }
   | { type: 'cueStyle'; ids: string[]; patch: Partial<CueStyle> }
-  | { type: 'replaceTimeline'; clips: Clip[]; subtitles: Cue[] }
+  | { type: 'replaceTimeline'; clips: Clip[]; subtitles: Cue[]; laneCount?: number }
   | { type: 'settings'; patch: Partial<Pick<Project, 'name' | 'aspect' | 'fps'>> };
 
 export function applyCommand(p: Project, cmd: Command): Project {
   let result = p;
   switch (cmd.type) {
+    case 'addLane':
+      if (laneCount(p) >= 32) throw new Error('타임라인은 최대 32행까지 추가할 수 있습니다.');
+      result = { ...p, laneCount: laneCount(p) + 1 };
+      break;
+    case 'deleteBlocks':
+      result = {
+        ...p,
+        clips: layout(p)
+          .filter((r) => !cmd.ids.includes(r.clip.id))
+          .map((r) => ({ ...r.clip, startUs: r.startUs })),
+        subtitles: p.subtitles.filter((c) => !cmd.ids.includes(c.id)),
+      };
+      break;
+    case 'placeBlock': {
+      if (
+        !Number.isInteger(cmd.lane) ||
+        cmd.lane < 0 ||
+        cmd.lane >= laneCount(p) ||
+        !Number.isSafeInteger(cmd.timeUs) ||
+        cmd.timeUs < 0
+      )
+        throw new Error('블록 위치가 올바르지 않습니다.');
+      result = {
+        ...p,
+        clips: layout(p).map((r) => ({
+          ...r.clip,
+          startUs: r.clip.id === cmd.id ? cmd.timeUs : r.startUs,
+          ...(r.clip.id === cmd.id ? { lane: cmd.lane } : {}),
+        })),
+        subtitles: p.subtitles.map((c) =>
+          c.id === cmd.id
+            ? { ...c, lane: cmd.lane, startUs: cmd.timeUs, endUs: cmd.timeUs + c.endUs - c.startUs }
+            : c,
+        ),
+      };
+      result = parseProject(JSON.stringify(result));
+      break;
+    }
+    case 'pasteBlocks': {
+      if (!cmd.clips.length && !cmd.cues.length) return p;
+      const first = Math.min(
+        ...cmd.clips.map((c) => c.startUs ?? 0),
+        ...cmd.cues.map((c) => c.startUs),
+      );
+      const firstLane = Math.min(...cmd.clips.map(clipLane), ...cmd.cues.map(cueLane));
+      const clips = cmd.clips.map((c) => ({
+        ...structuredClone(c),
+        id: newId(),
+        lane: cmd.lane + clipLane(c) - firstLane,
+        startUs: cmd.timeUs + (c.startUs ?? 0) - first,
+      }));
+      const cues = cmd.cues.map((c) => ({
+        ...structuredClone(c),
+        id: newId(),
+        lane: cmd.lane + cueLane(c) - firstLane,
+        startUs: cmd.timeUs + c.startUs - first,
+        endUs: cmd.timeUs + c.endUs - first,
+      }));
+      const count = Math.max(
+        laneCount(p),
+        ...clips.map((c) => c.lane + 1),
+        ...cues.map((c) => c.lane + 1),
+      );
+      result = parseProject(
+        JSON.stringify({
+          ...p,
+          laneCount: count,
+          clips: [...layout(p).map((r) => ({ ...r.clip, startUs: r.startUs })), ...clips],
+          subtitles: [...p.subtitles, ...cues],
+        }),
+      );
+      break;
+    }
     case 'assets':
       result = { ...p, assets: [...p.assets, ...cmd.assets] };
       break;
     case 'insert': {
       const asset = p.assets.find((a) => a.id === cmd.assetId);
       if (!asset) throw new Error('에셋을 찾을 수 없습니다.');
+      if (cmd.lane !== undefined) {
+        if (cmd.lane < 0 || cmd.lane >= laneCount(p)) throw new Error('대상 행이 없습니다.');
+        result = parseProject(
+          JSON.stringify({
+            ...p,
+            clips: [
+              ...layout(p).map((r) => ({ ...r.clip, startUs: r.startUs })),
+              {
+                id: newId(),
+                assetId: asset.id,
+                inUs: 0,
+                outUs: asset.durationUs,
+                transform: defaultTransform(),
+                lane: cmd.lane,
+                startUs: cmd.timeUs ?? 0,
+              },
+            ],
+          }),
+        );
+        break;
+      }
       const rows = layout(p);
       const index = Math.max(0, Math.min(rows.length, cmd.index));
       const startUs = rows[index]?.startUs ?? rows.at(-1)?.endUs ?? 0;
@@ -65,19 +166,19 @@ export function applyCommand(p: Project, cmd: Command): Project {
     case 'split': {
       if (!Number.isSafeInteger(cmd.timeUs) || cmd.timeUs <= 0 || cmd.timeUs >= duration(p))
         return p;
-      const item = layout(p).find((c) => c.startUs <= cmd.timeUs && cmd.timeUs < c.endUs);
-      let clips = p.clips;
-      const sourceUs = item ? item.clip.inUs + cmd.timeUs - item.startUs : 0;
-      if (item && sourceUs > item.clip.inUs && sourceUs < item.clip.outUs) {
-        const index = p.clips.indexOf(item.clip);
-        clips = [...p.clips];
-        clips.splice(
-          index,
-          1,
-          { ...item.clip, outUs: sourceUs },
-          { ...item.clip, id: newId(), startUs: cmd.timeUs, inUs: sourceUs },
-        );
-      }
+      let changedClip = false;
+      const splitClips = layout(p).flatMap((item) => {
+        if (item.startUs < cmd.timeUs && cmd.timeUs < item.endUs) {
+          changedClip = true;
+          const sourceUs = item.clip.inUs + cmd.timeUs - item.startUs;
+          return [
+            { ...item.clip, startUs: item.startUs, outUs: sourceUs },
+            { ...item.clip, id: newId(), startUs: cmd.timeUs, inUs: sourceUs },
+          ];
+        }
+        return [{ ...item.clip, startUs: item.startUs }];
+      });
+      const clips = changedClip ? splitClips : p.clips;
       let changedCue = false;
       const subtitles = p.subtitles.flatMap((cue) => {
         if (cue.startUs < cmd.timeUs && cmd.timeUs < cue.endUs) {
@@ -136,12 +237,16 @@ export function applyCommand(p: Project, cmd: Command): Project {
       if (selected.length < 2) return p;
       const rows = layout(p);
       const selectedRows = rows.filter((row) => cmd.ids.includes(row.clip.id));
+      selectedRows.sort((a, b) => a.startUs - b.startUs);
+      if (selectedRows.some((r) => clipLane(r.clip) !== clipLane(selectedRows[0].clip)))
+        throw new Error('같은 행의 영상만 합칠 수 있습니다.');
       if (selectedRows.some((row, i) => i > 0 && row.startUs !== selectedRows[i - 1].endUs))
         throw new Error(
           '서로 맞닿은 영상 블록을 선택해 합치세요. 빈 구간이나 다른 영상은 이동하지 않습니다.',
         );
       const parts = mediaLayout(p)
         .filter((c) => cmd.ids.includes(c.clip.id))
+        .sort((a, b) => a.startUs - b.startUs)
         .map((c) => ({
           assetId: c.clip.assetId,
           inUs: c.clip.inUs,
@@ -150,6 +255,7 @@ export function applyCommand(p: Project, cmd: Command): Project {
         }));
       const length = parts.reduce((sum, c) => sum + c.outUs - c.inUs, 0);
       const merged: Clip = {
+        lane: selectedRows[0].clip.lane,
         id: newId(),
         assetId: parts[0].assetId,
         inUs: 0,
@@ -183,12 +289,17 @@ export function applyCommand(p: Project, cmd: Command): Project {
       }
       result = {
         ...p,
-        clips: layout(p).map((row, index) => {
+        clips: layout(p).map((row) => {
           const delta = cmd.outUs - cmd.inUs - clipDuration(clip);
-          const selectedIndex = p.clips.indexOf(clip);
+          const selectedEnd = layout(p).find((r) => r.clip.id === clip.id)!.endUs;
           return row.clip.id === cmd.id
             ? { ...row.clip, startUs: row.startUs, inUs: cmd.inUs, outUs: cmd.outUs }
-            : { ...row.clip, startUs: row.startUs + (index > selectedIndex ? delta : 0) };
+            : {
+                ...row.clip,
+                startUs:
+                  row.startUs +
+                  (row.startUs >= selectedEnd && clipLane(row.clip) === clipLane(clip) ? delta : 0),
+              };
         }),
       };
       break;
@@ -196,6 +307,34 @@ export function applyCommand(p: Project, cmd: Command): Project {
     case 'move': {
       const clip = p.clips.find((c) => c.id === cmd.id);
       if (!clip) return p;
+      if (p.clips.some((c) => c.lane !== undefined)) {
+        const laneRows = layout(p)
+          .filter((r) => clipLane(r.clip) === clipLane(clip))
+          .sort((a, b) => a.startUs - b.startUs);
+        const old = p.clips.indexOf(clip);
+        const direction = cmd.index < old ? -1 : 1;
+        const i = laneRows.findIndex((r) => r.clip.id === clip.id),
+          other = laneRows[i + direction];
+        if (!other) return p;
+        const ordered = laneRows.map((r) => r.clip);
+        [ordered[i], ordered[i + direction]] = [ordered[i + direction], ordered[i]];
+        let cursor = laneRows[0].startUs;
+        const starts = new Map<string, number>();
+        ordered.forEach((c, j) => {
+          if (j) cursor += laneRows[j].startUs - laneRows[j - 1].endUs;
+          starts.set(c.id, cursor);
+          cursor += clipDuration(c);
+        });
+        result = parseProject(
+          JSON.stringify({
+            ...p,
+            clips: layout(p)
+              .map((r) => ({ ...r.clip, startUs: starts.get(r.clip.id) ?? r.startUs }))
+              .sort((a, b) => a.startUs - b.startUs),
+          }),
+        );
+        break;
+      }
       const clips = p.clips.filter((c) => c.id !== cmd.id);
       clips.splice(Math.max(0, Math.min(clips.length, cmd.index)), 0, clip);
       const rows = layout(p);
@@ -298,10 +437,16 @@ export function applyCommand(p: Project, cmd: Command): Project {
       result = { ...p, ...cmd.patch };
       break;
     case 'replaceTimeline':
-      result = { ...p, clips: cmd.clips, subtitles: cmd.subtitles };
+      result = {
+        ...p,
+        laneCount: cmd.laneCount ?? laneCount({ ...p, clips: cmd.clips, subtitles: cmd.subtitles }),
+        clips: cmd.clips,
+        subtitles: cmd.subtitles,
+      };
       break;
   }
   if (!Number.isSafeInteger(duration(result))) throw new Error('타임라인 시간이 너무 큽니다.');
+  if (cmd.type === 'trim' || cmd.type === 'move') return parseProject(JSON.stringify(result));
   return result;
 }
 

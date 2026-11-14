@@ -1705,7 +1705,7 @@ small {
   min-height: 46px;
 }
 .timeline-content {
-  min-height: 140px;
+  min-height: 100px;
   padding-top: 26px;
 }
 .ruler {
@@ -1880,5 +1880,40 @@ small {
   border-radius: 6px;
   margin-bottom: 10px;
 }
-.cue-batch-note p { margin: 6px 0; line-height: 1.5; }
-.cue-batch-note small { opacity: .8; }
+.cue-batch-note p {
+  margin: 6px 0;
+  line-height: 1.5;
+}
+.cue-batch-note small {
+  opacity: 0.8;
+}
+
+.timeline-row {
+  position: relative;
+  height: 76px;
+  border-bottom: 1px solid var(--line);
+}
+.timeline-row.active {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+.lane-label {
+  position: absolute;
+  right: 100%;
+  width: 72px;
+  height: 76px;
+  border-radius: 0;
+}
+.lane-label[aria-pressed='true'] {
+  color: var(--accent);
+  background: #37322a;
+}
+.timeline-row .subtitle-block {
+  top: 8px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+}
+.timeline-row .playhead-line {
+  height: 100%;
+}

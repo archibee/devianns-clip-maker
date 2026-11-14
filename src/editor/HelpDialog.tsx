@@ -48,7 +48,11 @@ const shortcuts = [
     group: '복사·실행 취소',
     rows: [
       ['Ctrl / ⌘ + C', '선택 블록 복사'],
-      ['Ctrl / ⌘ + V', '재생 위치에 붙여넣기 · 같은 트랙의 겹침은 거부'],
+      ['Ctrl / ⌘ + X', '선택한 영상 또는 자막 잘라내기 · 실행 취소로 복구 가능'],
+      [
+        'Ctrl / ⌘ + V',
+        '선택 행의 재생 위치에 붙여넣기 · 상대 시간/행 간격 보존 · 같은 행의 겹침은 거부',
+      ],
       ['Ctrl / ⌘ + Z', '실행 취소'],
       ['Ctrl / ⌘ + Shift + Z', '다시 실행'],
     ],
@@ -59,6 +63,11 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
     <Dialog title="편집 가이드 & 단축키" onClose={onClose}>
       <div className="editor-help">
         <section aria-labelledby="help-start-title">
+          <p>
+            타임라인의 ＋ 행 추가로 행을 늘리고 T 번호를 눌러 대상 행을 선택하세요. 각 행에는 영상
+            또는 자막을 놓을 수 있습니다. 블록을 다른 행으로 드래그해 이동하며, 행 번호가 큰 행이 앞
+            레이어입니다. 다른 행의 영상 소리는 함께 재생됩니다.
+          </p>
           <h3 id="help-start-title">빠른 시작</h3>
           <ol className="help-steps">
             {steps.map(([title, text], i) => (

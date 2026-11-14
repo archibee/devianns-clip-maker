@@ -33,11 +33,14 @@ export function renderFrame(
   transform: Transform,
   cues: Cue[],
   timeUs: number,
+  clear = true,
 ) {
   const { width, height } = ctx.canvas;
   ctx.save();
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, width, height);
+  if (clear) {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, width, height);
+  }
   if (image && sourceWidth && sourceHeight) {
     const crop = transform.crop ?? { x: 0, y: 0, width: 1, height: 1 };
     const rect = imageRect(
@@ -59,8 +62,10 @@ export function renderFrame(
       rect.height,
     );
   }
-  const cue = cues.find((c) => timeUs >= c.startUs && timeUs < c.endUs);
-  if (cue?.text) renderCue(ctx, cue, width, height);
+  for (const cue of cues
+    .filter((c) => timeUs >= c.startUs && timeUs < c.endUs)
+    .sort((a, b) => (a.lane ?? 1) - (b.lane ?? 1)))
+    if (cue.text) renderCue(ctx, cue, width, height);
   ctx.restore();
 }
 

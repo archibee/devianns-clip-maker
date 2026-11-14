@@ -1,9 +1,10 @@
 import { useRef, useState, type PointerEvent } from 'react';
-import { seconds, toUs, type Cue, type Project } from '../project/model';
+import { seconds, toUs, cueLane, type Cue, type Project } from '../project/model';
 import { cueDragRange, validateCueRange, type CueGesture } from '../project/subtitles';
 import type { Command } from '../project/commands';
 
 type Props = {
+  onLaneChange: (lane: number) => void;
   project: Project;
   cue: Cue;
   selected: boolean;
@@ -16,8 +17,14 @@ type Props = {
 export function SubtitleBlock(p: Props) {
   const element = useRef<HTMLDivElement>(null);
   const pointerSelected = useRef(false);
-  const gesture = useRef<{ pointerId: number; x: number; mode: CueGesture; cue: Cue } | null>(null);
-  const [draft, setDraft] = useState<{ startUs: number; endUs: number }>();
+  const gesture = useRef<{
+    pointerId: number;
+    x: number;
+    mode: CueGesture;
+    cue: Cue;
+    lane: number;
+  } | null>(null);
+  const [draft, setDraft] = useState<{ startUs: number; endUs: number; lane?: number }>();
   const range = draft ?? p.cue;
   let invalid = false;
   if (draft) {
@@ -41,7 +48,13 @@ export function SubtitleBlock(p: Props) {
     element.current!.focus();
     if (e.ctrlKey || e.metaKey) return;
     element.current!.setPointerCapture(e.pointerId);
-    gesture.current = { pointerId: e.pointerId, x: e.clientX, mode, cue: p.cue };
+    gesture.current = {
+      pointerId: e.pointerId,
+      x: e.clientX,
+      mode,
+      cue: p.cue,
+      lane: cueLane(p.cue),
+    };
   }
   function clear() {
     const g = gesture.current;
@@ -72,13 +85,25 @@ export function SubtitleBlock(p: Props) {
       }}
       onPointerDown={(e) => begin(e, 'move')}
       onPointerMove={(e) => {
-        if (gesture.current?.pointerId === e.pointerId) setDraft(candidate(e.clientX));
+        if (gesture.current?.pointerId === e.pointerId) {
+          if (gesture.current.mode === 'move') {
+            const row = document
+              .elementFromPoint(e.clientX, e.clientY)
+              ?.closest<HTMLElement>('[data-lane]');
+            if (row) gesture.current.lane = Number(row.dataset.lane);
+          }
+          setDraft({ ...candidate(e.clientX), lane: gesture.current.lane });
+        }
       }}
       onPointerUp={(e) => {
         if (gesture.current?.pointerId === e.pointerId) {
           const result = candidate(e.clientX);
+          const g = gesture.current;
           clear();
-          p.onCommand({ type: 'cueRange', id: p.cue.id, ...result });
+          if (g.mode === 'move') {
+            p.onLaneChange(g.lane);
+            p.onCommand({ type: 'placeBlock', id: p.cue.id, lane: g.lane, timeUs: result.startUs });
+          } else p.onCommand({ type: 'cueRange', id: p.cue.id, ...result });
         }
       }}
       onPointerCancel={clear}

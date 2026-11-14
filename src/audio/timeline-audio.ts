@@ -80,42 +80,57 @@ export async function* timelineAudio(
   getMedia: (id: string) => Promise<OpenMedia>,
   fromUs = 0,
 ): AsyncGenerator<AudioBlock> {
-  let cursor = Math.ceil(seconds(fromUs) * AUDIO_RATE);
-  const silence = function* (until: number) {
-    while (cursor < until) {
-      const frames = Math.min(AUDIO_BLOCK, until - cursor);
-      const block = { timestamp: cursor / AUDIO_RATE, frames, data: new Float32Array(frames * 2) };
-      cursor += frames;
-      yield block;
-    }
-  };
-  for (const item of mediaLayout(project).sort((a, b) => a.startUs - b.startUs)) {
-    if (item.endUs <= fromUs) continue;
-    yield* silence(Math.max(cursor, Math.round(seconds(item.startUs) * AUDIO_RATE)));
-    const media = await getMedia(item.clip.assetId);
-    const first = Math.max(
-      Math.round(seconds(item.startUs) * AUDIO_RATE),
-      Math.ceil(seconds(fromUs) * AUDIO_RATE),
-    );
-    const end = Math.round(seconds(item.endUs) * AUDIO_RATE);
-    const sourceAt = (sample: number) =>
-      media.origin + seconds(item.clip.inUs) + sample / AUDIO_RATE - seconds(item.startUs);
-    const reader = media.audio
-      ? new PcmReader(media, sourceAt(first), media.origin + seconds(item.clip.outUs) + 0.05)
-      : null;
-    try {
-      for (let offset = first; offset < end; offset += AUDIO_BLOCK) {
-        const frames = Math.min(AUDIO_BLOCK, end - offset);
-        yield {
-          timestamp: offset / AUDIO_RATE,
-          frames,
-          data: reader ? await reader.read(sourceAt(offset), frames) : new Float32Array(frames * 2),
-        };
-        cursor = offset + frames;
+  const rows = mediaLayout(project);
+  const end = Math.round(seconds(duration(project)) * AUDIO_RATE);
+  const active = new Map<string, { reader: PcmReader; media: OpenMedia }>();
+  try {
+    for (
+      let offset = Math.ceil(seconds(fromUs) * AUDIO_RATE);
+      offset < end;
+      offset += AUDIO_BLOCK
+    ) {
+      const frames = Math.min(AUDIO_BLOCK, end - offset),
+        data = new Float32Array(frames * 2);
+      const overlaps = rows.filter(
+        (r) =>
+          Math.round(seconds(r.startUs) * AUDIO_RATE) < offset + frames &&
+          Math.round(seconds(r.endUs) * AUDIO_RATE) > offset,
+      );
+      const keys = new Set(overlaps.map((r) => r.sourceKey));
+      for (const [key, entry] of active)
+        if (!keys.has(key)) {
+          await entry.reader.close();
+          active.delete(key);
+        }
+      for (const row of overlaps) {
+        const first = Math.max(offset, Math.round(seconds(row.startUs) * AUDIO_RATE));
+        const last = Math.min(offset + frames, Math.round(seconds(row.endUs) * AUDIO_RATE));
+        let entry = active.get(row.sourceKey);
+        const sourceAt = (sample: number, media: OpenMedia) =>
+          media.origin + seconds(row.clip.inUs) + sample / AUDIO_RATE - seconds(row.startUs);
+        if (!entry) {
+          const media = await getMedia(row.clip.assetId);
+          if (!media.audio) continue;
+          entry = {
+            media,
+            reader: new PcmReader(
+              media,
+              sourceAt(first, media),
+              media.origin + seconds(row.clip.outUs) + 0.05,
+            ),
+          };
+          active.set(row.sourceKey, entry);
+        }
+        const count = last - first,
+          pcm = await entry.reader.read(sourceAt(first, entry.media), count);
+        for (let ch = 0; ch < 2; ch++)
+          for (let i = 0; i < count; i++)
+            data[ch * frames + first - offset + i] += pcm[ch * count + i];
       }
-    } finally {
-      await reader?.close();
+      for (let i = 0; i < data.length; i++) data[i] = Math.max(-1, Math.min(1, data[i]));
+      yield { timestamp: offset / AUDIO_RATE, frames, data };
     }
+  } finally {
+    for (const entry of active.values()) await entry.reader.close();
   }
-  yield* silence(Math.round(seconds(duration(project)) * AUDIO_RATE));
 }

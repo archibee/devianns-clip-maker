@@ -18,7 +18,10 @@ import {
   dimensions,
   duration,
   frameTime,
-  resolve,
+  resolveAll,
+  clipLane,
+  cueLane,
+  laneCount,
   seconds,
   type ExportSettings,
   type Project,
@@ -58,8 +61,7 @@ self.onmessage = (event: MessageEvent<Start | { type: 'cancel' }>) => {
 };
 async function run(job: Start) {
   const inputs = new Map<string, OpenMedia>();
-  let reader: VideoReader | undefined;
-  let readerId: string | undefined;
+  const readers = new Map<string, VideoReader>();
   let audioIterator: ReturnType<typeof timelineAudio> | undefined;
   let output: Output | undefined;
   let disk: FileSystemWritableFileStream | undefined;
@@ -150,26 +152,36 @@ async function run(job: Start) {
       check();
       const timeUs = frameTime(n, job.settings.fps);
       const nextUs = Math.min(endUs, frameTime(n + 1, job.settings.fps));
-      const item = resolve(project, timeUs);
-      if (item) {
-        const media = await getMedia(item.clip.assetId);
-        // 컷 또는 클립 변경 시 동일 원본이라도 읽기 구간을 갱신한다.
-        if (readerId !== item.sourceKey) {
-          await reader?.close();
-          reader = new VideoReader(media);
-          readerId = item.sourceKey;
+      const items = resolveAll(project, timeUs);
+      const active = new Set(items.map((i) => i.sourceKey));
+      for (const [key, reader] of readers)
+        if (!active.has(key)) {
+          await reader.close();
+          readers.delete(key);
         }
-        const image = await reader!.at(seconds(item.sourceUs));
+      renderFrame(context, null, 0, 0, defaultTransform(), [], timeUs);
+      for (let lane = 0; lane < laneCount(project); lane++) {
+        const item = items.find((i) => clipLane(i.clip) === lane);
+        let image: Awaited<ReturnType<VideoReader['at']>> | undefined;
+        if (item) {
+          let reader = readers.get(item.sourceKey);
+          if (!reader) {
+            reader = new VideoReader(await getMedia(item.clip.assetId));
+            readers.set(item.sourceKey, reader);
+          }
+          image = await reader.at(seconds(item.sourceUs));
+        }
         renderFrame(
           context,
-          image,
-          image.width,
-          image.height,
-          item.clip.transform,
-          project.subtitles,
+          image ?? null,
+          image?.width ?? 0,
+          image?.height ?? 0,
+          item?.clip.transform ?? defaultTransform(),
+          project.subtitles.filter((c) => cueLane(c) === lane),
           timeUs,
+          false,
         );
-      } else renderFrame(context, null, 0, 0, defaultTransform(), project.subtitles, timeUs);
+      }
       await videoSource.add(seconds(timeUs), seconds(nextUs - timeUs));
       while (
         audioSource &&
@@ -228,7 +240,7 @@ async function run(job: Start) {
     );
   } finally {
     await audioIterator?.return(undefined);
-    await reader?.close();
+    for (const reader of readers.values()) await reader.close();
     for (const media of inputs.values()) media.input.dispose();
   }
 }

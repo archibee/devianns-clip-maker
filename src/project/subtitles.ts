@@ -1,4 +1,4 @@
-import { duration, type Cue, type Project } from './model';
+import { duration, cueLane, clipLane, layout, type Cue, type Project } from './model';
 
 export function validateCueRange(project: Project, cue: Cue) {
   if (
@@ -12,11 +12,21 @@ export function validateCueRange(project: Project, cue: Cue) {
   }
   if (
     project.subtitles.some(
-      (other) => other.id !== cue.id && cue.startUs < other.endUs && cue.endUs > other.startUs,
+      (other) =>
+        other.id !== cue.id &&
+        cueLane(other) === cueLane(cue) &&
+        cue.startUs < other.endUs &&
+        cue.endUs > other.startUs,
     )
   ) {
     throw new Error('자막이 다른 자막과 겹칩니다. 빈 구간이나 인접 경계로 옮기세요.');
   }
+  if (
+    layout(project).some(
+      (r) => clipLane(r.clip) === cueLane(cue) && cue.startUs < r.endUs && cue.endUs > r.startUs,
+    )
+  )
+    throw new Error('같은 행의 영상과 겹칩니다. 빈 위치나 다른 행을 선택하세요.');
 }
 
 export type CueGesture = 'move' | 'start' | 'end';

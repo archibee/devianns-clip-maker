@@ -103,6 +103,7 @@ export function NumberField({
 }
 
 type Props = {
+  activeLane: number;
   project: Project;
   selected?: string;
   selectedIds?: string[];
@@ -175,6 +176,7 @@ export function Inspector(p: Props) {
   const addCue = () => {
     const startUs = Math.max(0, p.timeUs);
     const cue: Cue = {
+      lane: p.activeLane,
       id: newId(),
       startUs,
       endUs: startUs + 2_000_000,

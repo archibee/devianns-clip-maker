@@ -13,6 +13,7 @@ export function useShortcuts({
   copyCue,
   pasteCue,
   selectAll,
+  cutBlocks,
 }: {
   locked: boolean;
   modal: boolean;
@@ -26,6 +27,7 @@ export function useShortcuts({
   copyCue: () => boolean;
   pasteCue: () => boolean;
   selectAll: () => boolean;
+  cutBlocks: () => boolean;
 }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -39,6 +41,13 @@ export function useShortcuts({
         return;
       if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'a') {
         if (selectAll()) e.preventDefault();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.altKey &&
+        !e.shiftKey &&
+        e.key.toLowerCase() === 'x'
+      ) {
+        if (!e.repeat && cutBlocks()) e.preventDefault();
       } else if (
         (e.ctrlKey || e.metaKey) &&
         !e.altKey &&
@@ -98,5 +107,6 @@ export function useShortcuts({
     copyCue,
     pasteCue,
     selectAll,
+    cutBlocks,
   ]);
 }

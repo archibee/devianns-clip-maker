@@ -24,8 +24,9 @@ export type Transform = {
   crop?: Crop;
 };
 export type ClipPart = { assetId: string; inUs: Us; outUs: Us; transform: Transform };
-export type Clip = ClipPart & { id: string; startUs?: Us; parts?: ClipPart[] };
+export type Clip = ClipPart & { id: string; startUs?: Us; parts?: ClipPart[]; lane?: number };
 export type Cue = {
+  lane?: number;
   id: string;
   startUs: Us;
   endUs: Us;
@@ -54,6 +55,7 @@ export const CUE_STYLE_KEYS: readonly (keyof CueStyle)[] = [
   'font',
 ];
 export type Project = {
+  laneCount?: number;
   schemaVersion: 1;
   id: string;
   name: string;
@@ -70,6 +72,7 @@ export const toUs = (seconds: number) => Math.round(seconds * 1_000_000);
 export const seconds = (us: Us) => us / 1_000_000;
 export const defaultTransform = (): Transform => ({ fit: 'contain', scale: 1, x: 0, y: 0 });
 export const emptyProject = (): Project => ({
+  laneCount: 1,
   schemaVersion: 1,
   id: newId(),
   name: '새 프로젝트',
@@ -92,46 +95,65 @@ export function dimensions(aspect: Aspect, resolution: Resolution) {
       : { width: resolution, height: resolution };
 }
 export function layout(project: Project) {
-  let startUs = 0;
+  const cursors = new Map<number, number>();
   return project.clips.map((clip) => {
-    startUs = clip.startUs ?? startUs;
+    const lane = clip.lane ?? 0;
+    const startUs = clip.startUs ?? cursors.get(lane) ?? 0;
     const item = { clip, startUs, endUs: startUs + clipDuration(clip) };
-    startUs = item.endUs;
+    cursors.set(lane, item.endUs);
     return item;
   });
 }
 export function resolve(project: Project, timeUs: Us) {
-  const item = mediaLayout(project).find((x) => timeUs >= x.startUs && timeUs < x.endUs);
+  const item = resolveAll(project, timeUs)[0];
   return item ? { ...item, sourceUs: item.clip.inUs + timeUs - item.startUs } : null;
 }
+export const clipLane = (clip: Clip) => clip.lane ?? 0;
+export const cueLane = (cue: Cue) => cue.lane ?? 1;
+export const laneCount = (p: Project) =>
+  Math.max(
+    p.laneCount ?? 1,
+    1,
+    ...p.clips.map((c) => clipLane(c) + 1),
+    ...p.subtitles.map((c) => cueLane(c) + 1),
+  );
+export function resolveAll(project: Project, timeUs: Us) {
+  return mediaLayout(project)
+    .filter((x) => timeUs >= x.startUs && timeUs < x.endUs)
+    .sort((a, b) => clipLane(b.clip) - clipLane(a.clip))
+    .map((item) => ({ ...item, sourceUs: item.clip.inUs + timeUs - item.startUs }));
+}
 export function mediaLayout(project: Project) {
-  return layout(project).flatMap((item) => {
-    if (!item.clip.parts) return [{ ...item, sourceKey: item.clip.id }];
-    let offset = 0;
-    return item.clip.parts.flatMap((part, index) => {
-      const partEnd = offset + part.outUs - part.inUs;
-      const from = Math.max(offset, item.clip.inUs),
-        to = Math.min(partEnd, item.clip.outUs);
-      const result =
-        to > from
-          ? [
-              {
-                clip: {
-                  ...part,
-                  id: item.clip.id,
-                  inUs: part.inUs + from - offset,
-                  outUs: part.inUs + to - offset,
+  return layout(project).flatMap<{ clip: Clip; startUs: number; endUs: number; sourceKey: string }>(
+    (item) => {
+      if (!item.clip.parts) return [{ ...item, sourceKey: item.clip.id }];
+      let offset = 0;
+      return item.clip.parts.flatMap((part, index) => {
+        const partEnd = offset + part.outUs - part.inUs;
+        const from = Math.max(offset, item.clip.inUs),
+          to = Math.min(partEnd, item.clip.outUs);
+        const result =
+          to > from
+            ? [
+                {
+                  clip: {
+                    ...part,
+                    lane: item.clip.lane,
+                    id: item.clip.id,
+                    inUs: part.inUs + from - offset,
+                    outUs: part.inUs + to - offset,
+                  },
+                  startUs: item.startUs + from - item.clip.inUs,
+                  endUs: item.startUs + to - item.clip.inUs,
+                  sourceKey: `${item.clip.id}:${index}`,
                 },
-                startUs: item.startUs + from - item.clip.inUs,
-                endUs: item.startUs + to - item.clip.inUs,
-                sourceKey: `${item.clip.id}:${index}`,
-              },
-            ]
-          : [];
-      offset = partEnd;
-      return result;
-    });
-  });
+              ]
+            : [];
+        offset = partEnd;
+        return result;
+      });
+    },
+  );
 }
 export function timecode(timeUs: Us, fps: Fps = 30) {
   const total = Math.max(0, Math.floor(timeUs / 1_000_000));
@@ -145,7 +167,15 @@ export function cueErrors(project: Project): string[] {
     const c = cues[i];
     if (c.startUs < 0 || c.endUs <= c.startUs || !Number.isSafeInteger(c.endUs))
       errors.push('자막 시간을 영상 범위 안으로 조정하세요.');
-    if (i && c.startUs < cues[i - 1].endUs) errors.push('겹치는 자막 시간을 조정하세요.');
+    if (
+      cues
+        .slice(0, i)
+        .some(
+          (other) =>
+            cueLane(other) === cueLane(c) && c.startUs < other.endUs && c.endUs > other.startUs,
+        )
+    )
+      errors.push('같은 행의 겹치는 자막 시간을 조정하세요.');
   }
   return [...new Set(errors)];
 }

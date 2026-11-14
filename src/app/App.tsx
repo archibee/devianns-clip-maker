@@ -24,9 +24,11 @@ import {
 import {
   emptyProject,
   layout,
+  laneCount,
+  clipLane,
+  cueLane,
   seconds,
   toUs,
-  newId,
   type Asset,
   type Cue,
   type Clip,
@@ -60,9 +62,8 @@ export function App() {
   const [selectedCueIds, setSelectedCueIds] = useState<string[]>([]);
   const [inspectorTab, setInspectorTab] = useState<'clip' | 'subtitle'>('clip');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const cueClipboard = useRef<
-    { kind: 'cue'; cue: Cue } | { kind: 'clips'; clips: Clip[] } | undefined
-  >(undefined);
+  const [activeLane, setActiveLane] = useState(0);
+  const cueClipboard = useRef<{ clips: Clip[]; cues: Cue[] } | undefined>(undefined);
   const pendingSeek = useRef<number | undefined>(undefined);
   const [importing, setImporting] = useState(false);
   const importRef = useRef(false);
@@ -123,12 +124,22 @@ export function App() {
       throw new Error('분석 중 프로젝트 상태가 변경됐습니다. 취소하고 다시 분석하세요.');
     const current = historyRef.current.present;
     const validated = parseProject(
-      JSON.stringify({ ...current, clips: result.clips, subtitles: result.subtitles }),
+      JSON.stringify({
+        ...current,
+        laneCount: result.laneCount,
+        clips: result.clips,
+        subtitles: result.subtitles,
+      }),
     );
     if (!validated.clips.length) throw new Error('남길 영상이 없어 완료할 수 없습니다.');
     const next = historyReducer(historyRef.current, {
       type: 'command',
-      command: { type: 'replaceTimeline', clips: validated.clips, subtitles: validated.subtitles },
+      command: {
+        type: 'replaceTimeline',
+        laneCount: validated.laneCount,
+        clips: validated.clips,
+        subtitles: validated.subtitles,
+      },
     });
     playback.pause();
     historyRef.current = next;
@@ -163,6 +174,8 @@ export function App() {
     }
   }
   function selectClip(id: string, additive = false) {
+    const target = project.clips.find((c) => c.id === id);
+    if (target) setActiveLane(clipLane(target));
     playback.pause();
     const ids = additive
       ? selectedIds.includes(id)
@@ -178,6 +191,8 @@ export function App() {
     setInspectorTab('clip');
   }
   function selectCue(id?: string, additive = false) {
+    const target = project.subtitles.find((c) => c.id === id);
+    if (target) setActiveLane(cueLane(target));
     playback.pause();
     const ids = !id
       ? []
@@ -193,15 +208,25 @@ export function App() {
     setInspectorTab('subtitle');
   }
   function copyCue() {
-    if (selectedCueIds.length > 1) return false;
-    const cue = project.subtitles.find((c) => c.id === selectedCue);
-    if (!cue) {
-      const clips = project.clips.filter((c) => selectedIds.includes(c.id) || c.id === selected);
-      if (!clips.length) return false;
-      cueClipboard.current = { kind: 'clips', clips: structuredClone(clips) };
-      return true;
+    const clips = layout(project)
+      .filter((r) => selectedIds.includes(r.clip.id) || r.clip.id === selected)
+      .map((r) => ({ ...r.clip, startUs: r.startUs }));
+    const cues = project.subtitles.filter((c) => selectedCueIds.includes(c.id));
+    if (!clips.length && !cues.length) return false;
+    cueClipboard.current = structuredClone({ clips, cues });
+    return true;
+  }
+  function cutBlocks() {
+    if (!copyCue()) return false;
+    const copied = cueClipboard.current!;
+    if (
+      command({ type: 'deleteBlocks', ids: [...copied.clips, ...copied.cues].map((c) => c.id) })
+    ) {
+      setSelectedIds([]);
+      setSelected(undefined);
+      setSelectedCueIds([]);
+      setSelectedCue(undefined);
     }
-    cueClipboard.current = { kind: 'cue', cue: structuredClone(cue) };
     return true;
   }
   function selectAll() {
@@ -230,32 +255,23 @@ export function App() {
   function pasteCue() {
     const copied = cueClipboard.current;
     if (!copied) return false;
-    if (copied.kind === 'clips') {
-      const before = new Set(project.clips.map((c) => c.id));
-      if (command({ type: 'pasteClips', clips: copied.clips, timeUs: playState.timeUs })) {
-        const ids = historyRef.current.present.clips
-          .filter((c) => !before.has(c.id))
-          .map((c) => c.id);
-        setSelectedIds(ids);
-        setSelected(ids.at(-1));
-        setSelectedCue(undefined);
-        setSelectedCueIds([]);
-        setInspectorTab('clip');
-        pendingSeek.current =
-          playState.timeUs + copied.clips.reduce((n, c) => n + c.outUs - c.inUs, 0);
-      }
-      return true;
-    }
-    const source = copied.cue;
-    const cue = {
-      ...source,
-      id: newId(),
-      startUs: playState.timeUs,
-      endUs: playState.timeUs + source.endUs - source.startUs,
-    };
-    if (command({ type: 'cue', cue })) {
-      selectCue(cue.id);
-      pendingSeek.current = cue.endUs;
+    const before = new Set([...project.clips, ...project.subtitles].map((c) => c.id));
+    if (
+      command({
+        type: 'pasteBlocks',
+        ...copied,
+        timeUs: playState.timeUs,
+        lane: Math.min(activeLane, laneCount(project) - 1),
+      })
+    ) {
+      const next = historyRef.current.present;
+      const clips = next.clips.filter((c) => !before.has(c.id)),
+        cues = next.subtitles.filter((c) => !before.has(c.id));
+      setSelectedIds(clips.map((c) => c.id));
+      setSelected(clips.at(-1)?.id);
+      setSelectedCueIds(cues.map((c) => c.id));
+      setSelectedCue(cues.length === 1 ? cues[0].id : undefined);
+      setInspectorTab(cues.length ? 'subtitle' : 'clip');
     }
     return true;
   }
@@ -273,11 +289,16 @@ export function App() {
     act({ type: 'redo' });
   }
   function insert(assetId: string) {
-    const rows = layout(historyRef.current.present);
-    const index = rows.findIndex((x) => playState.timeUs < (x.startUs + x.endUs) / 2);
-    command({ type: 'insert', assetId, index: index < 0 ? rows.length : index });
+    command({
+      type: 'insert',
+      assetId,
+      index: project.clips.length,
+      lane: Math.min(activeLane, laneCount(project) - 1),
+      timeUs: playState.timeUs,
+    });
   }
   useShortcuts({
+    cutBlocks,
     selectAll,
     locked,
     modal: !!modal,
@@ -530,6 +551,7 @@ export function App() {
           onToggle={toggle}
         />
         <Inspector
+          activeLane={Math.min(activeLane, laneCount(project) - 1)}
           selectedIds={selectedIds}
           selectedCueIds={selectedCueIds}
           project={project}
@@ -544,6 +566,8 @@ export function App() {
           onSeek={(us) => playback.seek(us)}
         />
         <Timeline
+          activeLane={Math.min(activeLane, laneCount(project) - 1)}
+          onLaneChange={setActiveLane}
           selectedCueIds={selectedCueIds}
           autoCutUnavailable={autoCutReason}
           onAutoCut={() => {
