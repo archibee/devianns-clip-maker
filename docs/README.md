@@ -54,6 +54,7 @@
 ## 반응형 UI
 
 - [mediaquery_v1.md](./responsive/mediaquery_v1.md)
+- [mediaquery_v2.md](./responsive/mediaquery_v2.md)
 
 ## 기본 문서
 

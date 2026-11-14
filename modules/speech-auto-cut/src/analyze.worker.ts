@@ -111,7 +111,9 @@ self.onmessage = async (event: MessageEvent<Request>) => {
         if (probability >= job.options.positive) speechFrames++;
         if (frame.missing) {
           if (endUs > startUs) protectedFrames.push({ startUs, endUs });
-          warnings.add('오디오 디코딩 공백은 보존했습니다.');
+          warnings.add(job.purpose === 'caption'
+            ? '오디오가 없는 일부 샘플은 무음으로 처리했습니다. 감지된 음성 구간만 자막으로 생성합니다.'
+            : '오디오 디코딩 공백은 보존했습니다.');
         }
         segmenter.feed(probability, startUs);
         if (performance.now() - lastReport > 100) {
@@ -127,8 +129,10 @@ self.onmessage = async (event: MessageEvent<Request>) => {
       await reader.close();
       reader = undefined;
       if (job.purpose === 'caption') {
+        // Timestamp gaps and shorter audio tails are normal in video containers.
+        // Pcm16Reader zero-fills missing samples without shifting absolute time;
+        // use the remaining decoded audio instead of rejecting the whole analysis.
         keep.push(...segmenter.speech);
-        if (protectedFrames.length) throw new Error('오디오 디코딩 공백이 있어 자막 시간을 확정할 수 없습니다. 원본을 확인하세요.');
       } else {
         keep.push(
           ...paddedKeep(segmenter.speech, row.startUs, row.endUs, job.options, job.project.fps),
