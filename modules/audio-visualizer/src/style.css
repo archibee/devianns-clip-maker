@@ -1,0 +1,38 @@
+.dialog:has(> .visualizer-body) {
+  display: flex;
+  flex-direction: column;
+  max-height: min(760px, calc(100dvh - 64px));
+  overflow: hidden;
+}
+.dialog:has(> .visualizer-body) > header,
+.dialog:has(> .visualizer-body) > footer {
+  flex-shrink: 0;
+}
+.visualizer-body {
+  display: grid;
+  gap: 8px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.visualizer-preview {
+  width: 100%;
+  height: auto;
+  max-height: 30dvh;
+  object-fit: contain;
+  background: repeating-conic-gradient(#252525 0% 25%, #333 0% 50%) 0 0 / 20px 20px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+.visualizer-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.visualizer-body progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.subtitle-block.visualizer-block {
+  background: #44364f;
+  border-color: #be9cdb;
+}

@@ -14,6 +14,7 @@ import {
 import type { Command } from '../project/commands';
 import { PanelTitle } from './Panel';
 import { SubtitleDrawer } from './SubtitleDrawer';
+import { VisualizerProperties } from '../../modules/audio-visualizer/src/VisualizerProperties';
 import { subtitleSizes, subtitlePositions, subtitleStyles } from './subtitle-presets';
 
 export function NumberField({
@@ -142,6 +143,7 @@ export function Inspector(p: Props) {
   );
   const multi = selectedCues.length > 1;
   const cue = selectedCues[0];
+  const hasVisualizer = selectedCues.some(c => !!c.visualizer);
   const selectionKey = JSON.stringify([...selectedCueIds].sort());
   const activeSelection = useRef(selectionKey);
   activeSelection.current = selectionKey;
@@ -215,7 +217,7 @@ export function Inspector(p: Props) {
           </button>
         </div>
       )}
-      {tab === 'subtitle' && cue && !multi && !p.locked && (
+      {tab === 'subtitle' && cue && !cue.visualizer && !multi && !p.locked && (
         <div className="cue-quick-editor">
           <label>
             <span className="cue-quick-heading">
@@ -389,7 +391,11 @@ export function Inspector(p: Props) {
           </>
         ) : (
           <>
-            {cue && (
+            {hasVisualizer && (multi ? <p>비주얼라이저 속성은 이펙트 하나를 선택해 수정하세요.</p> :
+              <VisualizerProperties cue={cue} disabled={p.locked}
+                onChange={next => p.onCommand({ type: 'cue', cue: next })}
+                onDelete={() => { p.onCommand({ type: 'deleteCue', id: cue.id }); p.onSelectCue(undefined); }} />)}
+            {cue && !hasVisualizer && (
               <div className="cue-editor" key={selectionKey}>
                 {multi && (
                   <div className="cue-batch-note">
@@ -709,7 +715,7 @@ export function Inspector(p: Props) {
                 <small>
                   {seconds(c.startUs).toFixed(2)}–{seconds(c.endUs).toFixed(2)}s
                 </small>
-                <span>{c.text || '(빈 자막)'}</span>
+                <span>{c.visualizer ? '♫ 오디오 비주얼라이저' : c.text || '(빈 자막)'}</span>
               </button>
             ))}
           </div>

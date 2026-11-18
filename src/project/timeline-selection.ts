@@ -14,6 +14,6 @@ export function selectLineBlocks<T extends SelectableBlock>(
 export function timelineBlocks(project: Project): SelectableBlock[] {
   return [
     ...project.clips.map((c) => ({ id: c.id, lane: clipLane(c), kind: 'video' })),
-    ...project.subtitles.map((c) => ({ id: c.id, lane: cueLane(c), kind: 'subtitle' })),
+    ...project.subtitles.map((c) => ({ id: c.id, lane: cueLane(c), kind: c.visualizer ? 'visualizer' : 'subtitle' })),
   ];
 }

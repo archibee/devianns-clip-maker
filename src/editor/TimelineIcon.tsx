@@ -1,4 +1,5 @@
 const paths = {
+  waveform: 'M3 8v4 M6.5 5v10 M10 2v16 M13.5 5v10 M17 8v4',
   crop: 'M5 2v11a2 2 0 0 0 2 2h11 M2 5h11a2 2 0 0 1 2 2v11',
   move: 'M10 2v16 M2 10h16 M7 5l3-3 3 3 M7 15l3 3 3-3 M5 7l-3 3 3 3 M15 7l3 3-3 3',
   resize: 'M3 8V3h5 M3 3l5 5 M12 17h5v-5 M17 17l-5-5',

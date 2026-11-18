@@ -16,6 +16,8 @@ import { Timeline } from '../editor/Timeline';
 import { Toolbar } from '../editor/Toolbar';
 import { Toast } from '../editor/Toast';
 import { RecordDialog } from '../../modules/screen-recorder/src/RecordDialog';
+import { VisualizerDialog, VisualizerBoundary } from '../../modules/audio-visualizer/src/VisualizerDialog';
+import { visualizerUnavailable } from '../../modules/audio-visualizer/src/plan';
 import { useShortcuts } from '../editor/useShortcuts';
 import {useWorkspaceResize} from '../editor/useWorkspaceResize';
 import { ExportService, type ExportState } from '../export/service';
@@ -78,7 +80,7 @@ export function App() {
   const [message, setMessage] = useState<string>();
   const dismissMessage = useCallback(() => setMessage(undefined), []);
   const [modal, setModal] = useState<
-    'export' | 'help' | 'recover' | 'autoCut' | 'autoCaption' | 'record' | 'deleteLane' | 'install'|'newProject'|'deleteAsset'
+    'export' | 'help' | 'recover' | 'autoCut' | 'autoCaption' | 'record' | 'deleteLane' | 'install'|'newProject'|'deleteAsset'|'visualizer'
   >();
   const [newProjectRequest,setNewProjectRequest]=useState<Project>();
   const [newProjectSaved,setNewProjectSaved]=useState(false);
@@ -102,6 +104,7 @@ export function App() {
     modal === 'autoCut' ||
     modal === 'autoCaption' ||
     modal === 'record' ||
+    modal === 'visualizer' ||
     modal === 'deleteLane' ||
     modal === 'newProject' || modal==='deleteAsset' ||
     installation.installing;
@@ -123,6 +126,10 @@ export function App() {
   const autoCaptionReason = useMemo(
     () => captionUnavailable(project, registry, captionLane),
     [project, registry, registryVersion, captionLane],
+  );
+  const visualizerReason = useMemo(
+    () => visualizerUnavailable(project, captionLane, registry),
+    [project, captionLane, registry, registryVersion],
   );
   function act(action: HistoryAction) {
     if (lockedRef.current) return false;
@@ -216,6 +223,19 @@ export function App() {
     setModal(undefined);
     setMessage('Auto Cut 적용 완료 · 실행 취소로 원래 타임라인을 복구할 수 있습니다.');
   }
+  function applyVisualizer(expected: Project, result: Project) {
+    if (modal !== 'visualizer' || historyRef.current.present !== expected || importing || exportState.status === 'running')
+      throw new Error('프로젝트 상태가 변경됐습니다. 취소하고 다시 분석하세요.');
+    const validated = parseProject(JSON.stringify(result));
+    const next = historyReducer(historyRef.current, { type: 'command', command: {
+      type: 'replaceTimeline', laneCount: validated.laneCount,
+      clips: validated.clips, subtitles: validated.subtitles,
+    }});
+    playback.pause(); historyRef.current = next; setHistory(next);
+    setActiveLane(laneCount(validated) - 1);
+    setSelected(undefined); setSelectedIds([]); setSelectedCue(undefined); setSelectedCueIds([]);
+    setModal(undefined); setMessage('비주얼라이저를 새 라인에 추가했습니다. 실행 취소로 복구할 수 있습니다.');
+  }
   function applyAutoCaption(expected: Project, result: Project) {
     if (modal !== 'autoCaption' || historyRef.current.present !== expected || importing || exportState.status === 'running')
       throw new Error('분석 중 프로젝트 상태가 변경됐습니다. 취소하고 다시 분석하세요.');
@@ -234,7 +254,7 @@ export function App() {
       setInspectorTab('subtitle');
     }
     setModal(undefined); setMessage(undefined);
-    setMessage(result === expected ? '감지된 음성이 없어 자막을 생성하지 않았습니다.' : 'Auto Caption 적용 완료 · 새 라인에 빈 자막을 추가했습니다. 실행 취소로 복구할 수 있습니다.');
+    setMessage(result === expected ? '감지된 음성이 없어 자막을 생성하지 않았습니다.' : '빈 자막 생성 완료 · 새 라인에 추가했습니다. 실행 취소로 복구할 수 있습니다.');
   }
   function split() {
     command({ type: 'split', timeUs: playState.timeUs });
@@ -717,6 +737,11 @@ export function App() {
           selectedCueIds={selectedCueIds}
           autoCutUnavailable={autoCutReason}
           autoCaptionUnavailable={autoCaptionReason}
+          visualizerUnavailable={visualizerReason}
+          onVisualizer={() => {
+            if (locked || visualizerUnavailable(project, captionLane, registry)) return;
+            playback.pause(); setModal('visualizer');
+          }}
           onAutoCaption={() => {
             if (locked || captionUnavailable(project, registry, captionLane)) return;
             playback.pause();
@@ -750,6 +775,12 @@ export function App() {
       </main>
 
       {modal === 'record' && <RecordDialog onClose={()=>setModal(undefined)} onImport={file=>importFiles([file])}/>}
+      {modal === 'visualizer' && (
+        <VisualizerBoundary onClose={() => setModal(undefined)}>
+          <VisualizerDialog project={project} lane={captionLane} registry={registry}
+            onClose={() => setModal(undefined)} onApply={applyVisualizer} />
+        </VisualizerBoundary>
+      )}
       {modal === 'autoCaption' && (
         <AutoCaptionBoundary onCancel={() => setModal(undefined)}>
           <AutoCaptionDialog project={project} lane={captionLane} registry={registry}

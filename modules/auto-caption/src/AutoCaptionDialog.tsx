@@ -16,8 +16,8 @@ export class AutoCaptionBoundary extends Component<{children: ReactNode; onCance
     return {error: error instanceof Error ? error.message : String(error)};
   }
   render() {
-    return this.state.error ? <div className="modal-backdrop"><section className="dialog" role="dialog" aria-modal="true" aria-label="Auto Caption 오류">
-      <h2>Auto Caption을 열지 못했습니다</h2><p role="alert">{this.state.error}</p>
+    return this.state.error ? <div className="modal-backdrop"><section className="dialog" role="dialog" aria-modal="true" aria-label="빈 자막 생성 오류">
+      <h2>빈 자막 생성을 열지 못했습니다</h2><p role="alert">{this.state.error}</p>
       <button autoFocus onClick={this.props.onCancel}>취소</button>
     </section></div> : this.props.children;
   }
@@ -80,7 +80,7 @@ export default function AutoCaptionDialog(p: Props) {
       if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && (document.activeElement === last || document.activeElement === event.currentTarget)) { event.preventDefault(); first.focus(); }
     }}>
-    <header><h2 id="auto-caption-title">AUTO CAPTION · 빈 자막 자동 생성</h2></header>
+    <header><h2 id="auto-caption-title">빈 자막 생성 · 음성 구간 기반</h2></header>
     <p>라인 {lane + 1}의 음성 구간에 빈 자막을 만듭니다. 영상과 기존 자막의 위치는 유지됩니다.</p>
     <label className="field">음성 인식 강도
       <select value={preset} disabled={busy} onChange={event => {

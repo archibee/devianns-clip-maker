@@ -279,7 +279,12 @@ export function applyCommand(p: Project, cmd: Command): Project {
           changedCue = true;
           return [
             { ...cue, endUs: cmd.timeUs },
-            { ...cue, id: newId(), startUs: cmd.timeUs },
+            {
+              ...cue, id: newId(), startUs: cmd.timeUs,
+              ...(cue.visualizer ? {
+                visualizer: { ...cue.visualizer, offsetUs: cue.visualizer.offsetUs + cmd.timeUs - cue.startUs },
+              } : {}),
+            },
           ];
         }
         return [cue];
@@ -505,6 +510,11 @@ export function applyCommand(p: Project, cmd: Command): Project {
       const cue = p.subtitles.find((c) => c.id === cmd.id);
       if (!cue || (cue.startUs === cmd.startUs && cue.endUs === cmd.endUs)) return p;
       const updated = { ...cue, startUs: cmd.startUs, endUs: cmd.endUs };
+      if (cue.visualizer && cmd.endUs - cmd.startUs !== cue.endUs - cue.startUs)
+        updated.visualizer = {
+          ...cue.visualizer,
+          offsetUs: Math.max(0, cue.visualizer.offsetUs + cmd.startUs - cue.startUs),
+        };
       validateCueRange(p, updated);
       result = { ...p, subtitles: p.subtitles.map((c) => (c.id === cue.id ? updated : c)) };
       break;

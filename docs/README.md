@@ -13,6 +13,8 @@
 
 ## 미디어
 
+- [visualizer_upgrade_v1.md](./visualizer/visualizer_upgrade_v1.md)
+
 - [record_upgrade_v1.md](./record/record_upgrade_v1.md)
 - [record_upgrade_v2.md](./record/record_upgrade_v2.md)
 - [record_upgrade_v3.md](./record/record_upgrade_v3.md)

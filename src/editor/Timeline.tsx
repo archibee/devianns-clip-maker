@@ -50,6 +50,8 @@ type Props = {
   autoCutUnavailable?: string;
   onAutoCaption: () => void;
   autoCaptionUnavailable?: string;
+  onVisualizer: () => void;
+  visualizerUnavailable?: string;
 };
 export function Timeline(p: Props) {
   const scroll = useRef<HTMLDivElement>(null);
@@ -277,7 +279,12 @@ export function Timeline(p: Props) {
               title={p.autoCaptionUnavailable ?? '선택 라인 음성 구간에 빈 자막 생성'}
               onClick={p.onAutoCaption}>
               <TimelineIcon name="auto" />
-              AUTO CAPTION
+              빈 자막 생성
+            </button>
+            <button disabled={p.locked || !!p.visualizerUnavailable}
+              title={p.visualizerUnavailable ?? '선택 라인 소리로 투명 비주얼라이저 이펙트 생성'}
+              onClick={p.onVisualizer}>
+              <TimelineIcon name="waveform" /> VISUALIZER
             </button>
           </div>
         </div>

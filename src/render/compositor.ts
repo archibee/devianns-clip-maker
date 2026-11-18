@@ -1,4 +1,5 @@
 import { localFontFamily } from './local-fonts';
+import { drawVisualizer } from '../../modules/audio-visualizer/src/render';
 import { dimensions, type Aspect, type Cue, type Transform } from '../project/model';
 
 export const FONT_FAMILY = 'Clip Noto';
@@ -65,7 +66,8 @@ export function renderFrame(
   for (const cue of cues
     .filter((c) => timeUs >= c.startUs && timeUs < c.endUs)
     .sort((a, b) => (a.lane ?? 1) - (b.lane ?? 1)))
-    if (cue.text) renderCue(ctx, cue, width, height);
+    if (cue.visualizer) drawVisualizer(ctx, cue, timeUs);
+    else if (cue.text) renderCue(ctx, cue, width, height);
   ctx.restore();
 }
 

@@ -1,3 +1,4 @@
+import { validVisualizer } from '../../modules/audio-visualizer/src/types';
 import {
   duration,
   layout,
@@ -120,6 +121,7 @@ export function parseProject(text: string): Project {
     } else if (Number(c.outUs) > a.durationUs) return fail();
   }
   for (const c of p.subtitles) {
+    if (object(c) && c.visualizer !== undefined && !validVisualizer(c.visualizer)) return fail();
     if (
       !object(c) ||
       !unique(c.id) ||

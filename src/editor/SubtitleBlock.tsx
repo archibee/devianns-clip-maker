@@ -92,12 +92,12 @@ export function SubtitleBlock(p: Props) {
   return (
     <div
       ref={element}
-      className={`subtitle-block ${p.selected ? 'selected' : ''} ${invalid ? 'invalid' : ''}`}
+      className={`subtitle-block ${p.cue.visualizer ? 'visualizer-block' : ''} ${p.selected ? 'selected' : ''} ${invalid ? 'invalid' : ''}`}
       role="button"
       tabIndex={p.locked ? -1 : 0}
-      aria-label={`자막: ${p.cue.text || '(빈 자막)'}`}
+      aria-label={p.cue.visualizer ? '오디오 비주얼라이저' : `자막: ${p.cue.text || '(빈 자막)'}`}
       aria-pressed={p.selected}
-      title={p.cue.text}
+      title={p.cue.visualizer ? '오디오 비주얼라이저 · 드래그로 이동' : p.cue.text}
       onClick={(e) => {
         if (pointerSelected.current) {
           pointerSelected.current = false;
@@ -141,7 +141,7 @@ export function SubtitleBlock(p: Props) {
         }
       }}
     >
-      <span className="subtitle-label">T {p.cue.text}</span>
+      <span className="subtitle-label">{p.cue.visualizer ? '♫ VISUALIZER' : `T ${p.cue.text}`}</span>
       {!p.multiple && (
         <>
           <button

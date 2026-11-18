@@ -1,5 +1,7 @@
 # Devianns Clip Maker
 
+타임라인의 **VISUALIZER**는 선택 라인의 소리를 분석해 투명한 막대 스펙트럼 이펙트를 새 라인에 추가하는 베타 기능입니다. 모달에서 분석·스타일 조절 후 완료할 때만 적용합니다. [비주얼라이저 V1](./docs/visualizer/visualizer_upgrade_v1.md)
+
 미디어 패널의 **녹화**에서 다른 탭·화면을 선택하고 녹화 결과를 영상 에셋으로 바로 가져올 수 있습니다. 공유 소리는 브라우저 공유창에서 허용해야 하며 화면 캡처를 지원하지 않는 모바일 브라우저에서는 사용할 수 없습니다. [녹화 V1](./docs/record/record_upgrade_v1.md), [모바일 UI V1](./docs/responsive/mobile_ui_upgrade_v1.md)에 요구사항과 확인 범위를 정리했습니다.
 
 [녹화 V2](./docs/record/record_upgrade_v2.md)는 전체/사각형 지정과 고정 크기·비율 유지 녹화를 추가합니다. 사각형은 미리보기에서 조절하며 다른 탭의 영상 요소를 자동 추적하지 않습니다.

@@ -32,6 +32,7 @@ export type ClipPart = {
 };
 export type Clip = ClipPart & { id: string; startUs?: Us; parts?: ClipPart[]; lane?: number };
 export type Cue = {
+  visualizer?: import('../../modules/audio-visualizer/src/types').VisualizerData;
   lane?: number;
   id: string;
   startUs: Us;
