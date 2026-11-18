@@ -100,8 +100,19 @@
   .panel-actions {
     min-width: 0;
   }
+  .asset-panel .panel-index {
+    display: none;
+  }
+  .asset-panel .record-open {
+    min-height: 32px;
+    padding: 3px 6px;
+    font-size: 11px;
+  }
   .preview-panel .panel-title {
     flex-wrap: nowrap;
+  }
+  .preview-panel {
+    container-type: inline-size;
   }
   .preview-panel .preview-tools {
     min-width: 0;
@@ -123,25 +134,32 @@
   }
   .transport {
     height: auto;
-    min-height: 40px;
+    min-height: 54px;
     gap: 4px;
     flex-wrap: nowrap;
     padding: 3px 6px;
   }
   .transport-buttons {
-    gap: 2px;
+    gap: 4px;
     flex-shrink: 0;
   }
   .transport-buttons button,
   .transport-buttons .play-button {
-    min-height: 28px;
-    min-width: clamp(22px, 4vw, 32px);
-    width: auto;
+    min-height: 44px;
+    height: 44px;
+    min-width: clamp(36px, 8cqw, 44px);
+    width: clamp(36px, 8cqw, 44px);
+    flex: 0 0 auto;
     padding: 0;
+    font-size: 18px;
   }
   .transport-buttons .play-button {
-    height: 30px;
-    margin: 0 2px;
+    min-height: 44px;
+    height: 44px;
+    min-width: 44px;
+    width: 44px;
+    margin: 0;
+    font-size: 15px;
   }
   .timeline-panel .panel-title {
     height: auto;
@@ -221,7 +239,10 @@
     max-height: 32px;
     padding: 3px 8px;
   }
-  .subtitle-inspector .cue-quick-editor { flex-basis: 60px; min-height: 58px; }
+  .subtitle-inspector .cue-quick-editor {
+    flex-basis: 60px;
+    min-height: 58px;
+  }
   .resize-handle {
     min-width: 18px;
     min-height: 18px;
@@ -298,14 +319,14 @@
     grid-row: 4;
   }
   .toolbar {
-    grid-template-columns: max-content max-content minmax(0, 1fr);
+    grid-template-columns: clamp(80px, 26vw, 128px) minmax(0, 1fr);
     column-gap: 2px;
   }
   .toolbar .brand {
-    max-width: clamp(72px, 20vw, 100px);
+    display: none;
   }
   .toolbar .project-name {
-    width: clamp(48px, 13vw, 68px);
+    width: 100%;
   }
   .toolbar .project-name input[aria-label] {
     padding-left: 1px;

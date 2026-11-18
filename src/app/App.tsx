@@ -15,6 +15,7 @@ import { PreviewPanel } from '../editor/PreviewPanel';
 import { Timeline } from '../editor/Timeline';
 import { Toolbar } from '../editor/Toolbar';
 import { Toast } from '../editor/Toast';
+import { RecordDialog } from '../../modules/screen-recorder/src/RecordDialog';
 import { useShortcuts } from '../editor/useShortcuts';
 import { ExportService, type ExportState } from '../export/service';
 import { MediaRegistry } from '../media/registry';
@@ -79,7 +80,7 @@ export function App() {
   const dismissMessage = useCallback(() => setMessage(undefined), []);
   const [notice, setNotice] = useState('영상 파일은 서버로 전송되지 않습니다.');
   const [modal, setModal] = useState<
-    'export' | 'help' | 'recover' | 'autoCut' | 'autoCaption' | 'deleteLane' | 'install'|'newProject'|'deleteAsset'
+    'export' | 'help' | 'recover' | 'autoCut' | 'autoCaption' | 'record' | 'deleteLane' | 'install'|'newProject'|'deleteAsset'
   >();
   const [newProjectRequest,setNewProjectRequest]=useState<Project>();
   const [newProjectSaved,setNewProjectSaved]=useState(false);
@@ -102,6 +103,7 @@ export function App() {
     importing ||
     modal === 'autoCut' ||
     modal === 'autoCaption' ||
+    modal === 'record' ||
     modal === 'deleteLane' ||
     modal === 'newProject' || modal==='deleteAsset' ||
     installation.installing;
@@ -516,10 +518,10 @@ export function App() {
   );
 
   async function importFiles(files: File[]) {
-    if (!files.length || importRef.current || exportState.status === 'running') return;
+    if (!files.length || importRef.current || exportState.status === 'running') return false;
     if (historyRef.current.present.assets.length + files.length > 500) {
       setMessage('에셋은 최대 500개까지 추가할 수 있습니다.');
-      return;
+      return false;
     }
     importRef.current = true;
     setImporting(true);
@@ -546,6 +548,7 @@ export function App() {
     setRegistryVersion((v) => v + 1);
     setImporting(false);
     importRef.current = false;
+    return assets.length === files.length;
   }
   async function reconnect(file: File) {
     const asset = reconnectAsset.current;
@@ -649,6 +652,7 @@ export function App() {
           importing={importing}
           locked={locked || !supported}
           onImport={(files) => void importFiles(files)}
+          onRecord={() => {if(!locked){playback.pause();setModal('record');}}}
           onInsert={insert}
           onReconnect={(asset) => {
             reconnectAsset.current = asset;
@@ -764,6 +768,7 @@ export function App() {
           WEB CODECS <b>·</b> LOCAL FIRST
         </span>
       </footer>
+      {modal === 'record' && <RecordDialog onClose={()=>setModal(undefined)} onImport={file=>importFiles([file])}/>}
       {modal === 'autoCaption' && (
         <AutoCaptionBoundary onCancel={() => setModal(undefined)}>
           <AutoCaptionDialog project={project} lane={captionLane} registry={registry}

@@ -1,5 +1,7 @@
 # Devianns Clip Maker 상세 설계
 
+추가 입력 경로: [녹화 V1](./docs/record/record_upgrade_v1.md)의 `modules/screen-recorder`는 화면 공유 스트림을 제한된 MediaRecorder 청크로 파일화하고 기존 임포트 계층으로 전달한다. 일반 미리보기·최종 내보내기는 기존 WebCodecs 경로를 유지한다. 공유 스트림은 저장 모델에 넣지 않으며 정상 완료·실패·취소 모두 해제한다. [모바일 UI V1](./docs/responsive/mobile_ui_upgrade_v1.md)은 모바일 로고 숨김과 재생 컨트롤 최소 크기를 정의한다.
+
 UI 보완 기록: [파이널 업그레이드 V4](./docs/final/final_upgrade_v4.md). 빠른 입력 높이는 PC 28px·터치 화면 32px로 줄이고 상단바의 스타일 우선순위와 타임라인 슬라이더 높이를 보정했다. `cue` 수정 명령은 기존 배열 위치를 보존한다. Windows Edge의 6개 화면 크기·터치 에뮬레이션에서 변경 범위의 UI를 검사했으며 실제 기기 검증과 구분한다.
 
 일반 편집 UI 변경은 [파이널 업그레이드 V3](./docs/final/final_upgrade_v3.md)를 따른다. 자막 입력·속성·목록의 스크롤 영역을 분리하고 작은 화면의 상단 메뉴는 한 줄로 유지하되 초과 도구는 가로 스크롤로 접근한다. 음성 시작 임계값은 0.3~0.7의 등간격 5단계, 종료 임계값은 각각 0.15 낮게 설정한다.

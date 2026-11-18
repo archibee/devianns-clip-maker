@@ -13,6 +13,8 @@
 
 ## 미디어
 
+- [record_upgrade_v1.md](./record/record_upgrade_v1.md)
+
 - [media_upgrade_v1.md](./media/media_upgrade_v1.md)
 
 ## 메타데이터·SEO
@@ -56,6 +58,8 @@
 - [final_upgrade_v4.md](./final/final_upgrade_v4.md)
 
 ## 반응형 UI
+
+- [mobile_ui_upgrade_v1.md](./responsive/mobile_ui_upgrade_v1.md)
 
 - [mediaquery_v1.md](./responsive/mediaquery_v1.md)
 - [mediaquery_v2.md](./responsive/mediaquery_v2.md)

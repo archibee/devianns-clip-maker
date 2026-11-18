@@ -11,6 +11,7 @@ type Props = {
   importing: boolean;
   locked: boolean;
   onImport: (files: File[]) => void;
+  onRecord: () => void;
   onInsert: (id: string) => void;
   onRemove:(id:string)=>void;
   onReconnect: (asset: Asset) => void;
@@ -37,6 +38,10 @@ export function AssetPanel(p: Props) {
       }}
     >
       <PanelTitle number="01" title="미디어">
+        <button className="subtle record-open" disabled={p.locked || p.importing} onClick={p.onRecord} title="다른 탭·창·화면을 녹화해 에셋에 추가" aria-label="탭·화면 녹화">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="2" y="3" width="16" height="11" rx="2"/><path d="M6 18h8m-4-4v4"/><circle cx="10" cy="8.5" r="2.5" fill="currentColor" stroke="none"/></svg>
+          녹화
+        </button>
         <span className="count">{p.project.assets.length}</span>
       </PanelTitle>
       <div className="asset-tools">

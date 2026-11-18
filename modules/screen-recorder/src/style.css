@@ -1,0 +1,26 @@
+.record-dialog-body {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.record-preview {
+  display: block;
+  width: 100%;
+  max-height: 35dvh;
+  aspect-ratio: 16/9;
+  object-fit: contain;
+  background: #111;
+  border-radius: 6px;
+}
+.record-audio {
+  color: #8bd7bb;
+}
+.record-warning {
+  color: #ffd078;
+}
+.record-status {
+  font-variant-numeric: tabular-nums;
+}
+.record-actions {
+  flex-wrap: wrap;
+}

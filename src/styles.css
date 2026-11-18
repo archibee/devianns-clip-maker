@@ -315,6 +315,7 @@ small {
   color: #bdbdbd;
   font-size: 10px;
 }
+.asset-panel .record-open { min-height:24px;padding:2px 6px;font-size:10px; }
 .asset-tools button {
   font-size: 10px;
   min-height: 26px;
