@@ -78,6 +78,8 @@
 
 ## 기본 문서
 
+- [startup_upgrade_v1.md](./startup/startup_upgrade_v1.md) — 첫 진입 로딩·오류 화면
+
 - [프로젝트 소개](../README.md)
 - [설계](../STRUCTURE.md)
 - [작업자 지침](../AGENTS.md)

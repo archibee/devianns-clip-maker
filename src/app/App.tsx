@@ -1,4 +1,5 @@
 import { prepareLocalFonts } from '../render/local-fonts';
+import { completeBoot } from '../startup/boot';
 import { usePwaInstall, type InstallResult } from '../pwa/usePwaInstall';
 import { InstallDialog } from '../pwa/InstallDialog';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -94,6 +95,7 @@ export function App() {
   }>();
   const [recovery, setRecovery] = useState<Project>();
   const [restoreReady, setRestoreReady] = useState(false);
+  useEffect(() => { if (restoreReady) completeBoot(); }, [restoreReady]);
   const [registryVersion, setRegistryVersion] = useState(0);
   const projectPicker = useRef<HTMLInputElement>(null);
   const reconnectPicker = useRef<HTMLInputElement>(null);
