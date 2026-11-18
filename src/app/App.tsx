@@ -8,7 +8,7 @@ import { captionUnavailable } from '../../modules/auto-caption/src/plan';
 import { AutoCutBoundary, AutoCutPending } from '../../modules/speech-auto-cut/src/ModuleBoundary';
 import { AssetPanel } from '../editor/AssetPanel';
 import { ExportDialog } from '../editor/ExportDialog';
-import { Inspector, NumberField } from '../editor/Inspector';
+import { Inspector } from '../editor/Inspector';
 import { HelpDialog } from '../editor/HelpDialog';
 import { Dialog } from '../editor/Panel';
 import { PreviewPanel } from '../editor/PreviewPanel';
@@ -17,6 +17,7 @@ import { Toolbar } from '../editor/Toolbar';
 import { Toast } from '../editor/Toast';
 import { RecordDialog } from '../../modules/screen-recorder/src/RecordDialog';
 import { useShortcuts } from '../editor/useShortcuts';
+import {useWorkspaceResize} from '../editor/useWorkspaceResize';
 import { ExportService, type ExportState } from '../export/service';
 import { MediaRegistry } from '../media/registry';
 import { PlaybackService, type PlaybackState } from '../playback/service';
@@ -33,8 +34,6 @@ import {
   clipLane,
   clipUsesAsset,
   cueLane,
-  seconds,
-  toUs,
   type Asset,
   type Cue,
   type Clip,
@@ -78,7 +77,6 @@ export function App() {
   const importRef = useRef(false);
   const [message, setMessage] = useState<string>();
   const dismissMessage = useCallback(() => setMessage(undefined), []);
-  const [notice, setNotice] = useState('영상 파일은 서버로 전송되지 않습니다.');
   const [modal, setModal] = useState<
     'export' | 'help' | 'recover' | 'autoCut' | 'autoCaption' | 'record' | 'deleteLane' | 'install'|'newProject'|'deleteAsset'
   >();
@@ -109,6 +107,7 @@ export function App() {
     installation.installing;
   const lockedRef = useRef(locked);
   lockedRef.current = locked;
+  const workspaceLayout=useWorkspaceResize(locked);
   const supported =
     globalThis.isSecureContext &&
     typeof globalThis.VideoDecoder === 'function' &&
@@ -155,7 +154,7 @@ export function App() {
     const next=initialHistory(emptyProject());
     historyRef.current=next;pendingSeek.current=0;cueClipboard.current=undefined;reconnectAsset.current=undefined;
     setHistory(next);setSelected(undefined);setSelectedIds([]);setSelectedCue(undefined);setSelectedCueIds([]);setActiveLane(0);setInspectorTab('clip');setRecovery(undefined);setAutoCutTarget(undefined);setExportState({status:'idle',progress:0,stage:''});
-    setMessage(undefined);setNotice('새 프로젝트를 만들었습니다.');setModal(undefined);setNewProjectRequest(undefined);setNewProjectSaved(false);
+    setMessage(undefined);setMessage('새 프로젝트를 만들었습니다.');setModal(undefined);setNewProjectRequest(undefined);setNewProjectSaved(false);
   }
   function removeAsset(id:string){
     if(lockedRef.current)return;
@@ -215,7 +214,7 @@ export function App() {
     setInspectorTab('clip');
     setMessage(undefined);
     setModal(undefined);
-    setNotice('Auto Cut 적용 완료 · 실행 취소로 원래 타임라인을 복구할 수 있습니다.');
+    setMessage('Auto Cut 적용 완료 · 실행 취소로 원래 타임라인을 복구할 수 있습니다.');
   }
   function applyAutoCaption(expected: Project, result: Project) {
     if (modal !== 'autoCaption' || historyRef.current.present !== expected || importing || exportState.status === 'running')
@@ -235,7 +234,7 @@ export function App() {
       setInspectorTab('subtitle');
     }
     setModal(undefined); setMessage(undefined);
-    setNotice(result === expected ? '감지된 음성이 없어 자막을 생성하지 않았습니다.' : 'Auto Caption 적용 완료 · 새 라인에 빈 자막을 추가했습니다. 실행 취소로 복구할 수 있습니다.');
+    setMessage(result === expected ? '감지된 음성이 없어 자막을 생성하지 않았습니다.' : 'Auto Caption 적용 완료 · 새 라인에 빈 자막을 추가했습니다. 실행 취소로 복구할 수 있습니다.');
   }
   function split() {
     command({ type: 'split', timeUs: playState.timeUs });
@@ -490,7 +489,7 @@ export function App() {
         }
       })
       .catch(() => {
-        if (active) setNotice('자동 복구를 읽지 못했습니다. JSON으로 프로젝트를 저장하세요.');
+        if (active) setMessage('자동 복구를 읽지 못했습니다. JSON으로 프로젝트를 저장하세요.');
       })
       .finally(() => {
         if (active) setRestoreReady(true);
@@ -503,8 +502,7 @@ export function App() {
     if (!restoreReady || modal === 'recover') return;
     const timer = setTimeout(() => {
       void autosave(project)
-        .then(() => setNotice('편집 상태 자동 저장됨 · 원본은 별도로 보관하세요.'))
-        .catch(() => setNotice('자동 저장 실패 · JSON 프로젝트를 저장하세요.'));
+        .catch(() => setMessage('자동 저장 실패 · JSON 프로젝트를 저장하세요.'));
     }, 700);
     return () => clearTimeout(timer);
   }, [project, restoreReady, modal]);
@@ -544,7 +542,7 @@ export function App() {
       setHistory(next);
     }
     setMessage(failures.length ? failures.join('\n') : undefined);
-    setNotice(`${assets.length}개 에셋을 가져왔습니다. 타임라인에 추가하세요.`);
+    if (!failures.length) setMessage(`${assets.length}개 에셋을 가져왔습니다. 타임라인에 추가하세요.`);
     setRegistryVersion((v) => v + 1);
     setImporting(false);
     importRef.current = false;
@@ -644,7 +642,7 @@ export function App() {
         )}
         {message && <Toast message={message} onDismiss={dismissMessage} />}
       </div>
-      <main className="workspace" aria-busy={locked}>
+      <main ref={workspaceLayout.ref} style={workspaceLayout.style} className={`workspace ${workspaceLayout.isResizing ? 'is-resizing' : ''}`} aria-busy={locked}>
         <AssetPanel
           onRemove={removeAsset}
           project={project}
@@ -748,26 +746,9 @@ export function App() {
           onSplit={split}
           onDelete={remove}
         />
+        {workspaceLayout.handles}
       </main>
-      <footer className="statusbar">
-        <span>
-          <i className="status-dot" />
-          {notice}
-        </span>
-        <div className="precise-seek">
-          <NumberField
-            label="이동 (초)"
-            value={seconds(playState.timeUs)}
-            min={0}
-            max={seconds(Number.MAX_SAFE_INTEGER)}
-            disabled={locked}
-            onCommit={(n) => playback.seek(toUs(n))}
-          />
-        </div>
-        <span>
-          WEB CODECS <b>·</b> LOCAL FIRST
-        </span>
-      </footer>
+
       {modal === 'record' && <RecordDialog onClose={()=>setModal(undefined)} onImport={file=>importFiles([file])}/>}
       {modal === 'autoCaption' && (
         <AutoCaptionBoundary onCancel={() => setModal(undefined)}>

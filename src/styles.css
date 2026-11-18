@@ -153,11 +153,11 @@ small {
   overflow: hidden;
 }
 .toolbar {
-  min-height: 38px;
+  min-height: 34px;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 2px 22px;
+  padding: 1px 14px;
   background: #1a1a1a;
   border-bottom: 1px solid var(--line);
 }
@@ -244,8 +244,8 @@ small {
   margin: 0 5px;
 }
 .workspace {
-  padding: 12px;
-  gap: 10px;
+  padding: 8px;
+  gap: 8px;
   display: grid;
   grid-template-columns: 260px minmax(360px, 1fr) 270px;
   grid-template-rows: minmax(320px, 1fr) 285px;
@@ -263,13 +263,13 @@ small {
   flex-direction: column;
 }
 .panel-title {
-  height: 30px;
-  min-height: 30px;
+  height: 28px;
+  min-height: 28px;
   display: flex;
   align-items: center;
-  padding: 0 14px;
+  padding: 0 8px;
   border-bottom: 1px solid var(--line);
-  gap: 9px;
+  gap: 6px;
 }
 .panel-title h2 {
   font-size: 11px;
@@ -311,7 +311,7 @@ small {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 14px;
+  padding: 4px 8px;
   color: #bdbdbd;
   font-size: 10px;
 }
@@ -633,7 +633,7 @@ small {
 }
 .tab-bar {
   display: flex;
-  padding: 0 12px;
+  padding: 0 8px;
   gap: 6px;
   border-bottom: 1px solid var(--line);
 }
@@ -660,7 +660,7 @@ small {
 }
 .inspector-body {
   min-height: 0;
-  padding: 10px 12px;
+  padding: 8px;
   overflow: auto;
   flex: 1;
 }
@@ -668,7 +668,7 @@ small {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.3px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: #d8d8d8;
 }
 .cue-quick-editor {
@@ -676,12 +676,12 @@ small {
   min-height: 50px;
   max-height: 25%;
   overflow: auto;
-  padding: 4px 10px 6px;
+  padding: 4px 8px 6px;
   background: #202020;
   border-bottom: 1px solid #727272;
 }
 .subtitle-inspector .inspector-body { flex: 1 1 0; min-height: 80px; }
-.subtitle-list-region { flex: 0 1 110px; min-height: 52px; max-height: 28%; overflow: auto; padding: 6px 10px; border-top: 1px solid var(--line); }
+.subtitle-list-region { flex: 0 1 110px; min-height: 52px; max-height: 28%; overflow: auto; padding: 6px 8px; border-top: 1px solid var(--line); }
 .subtitle-list-region h3 { font-size: 10px; margin-bottom: 4px; }
 .subtitle-list-region .cue-list { margin: 0; max-height: none; }
 .cue-quick-editor label {
@@ -722,31 +722,31 @@ small {
   gap: 4px;
   color: #b7b7b7;
   font-size: 10px;
-  margin-bottom: 9px;
+  margin-bottom: 6px;
   min-width: 0;
 }
 .field input,
 .field select {
   font-size: 11px;
   width: 100%;
-  padding-top: 5px;
-  padding-bottom: 5px;
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 .field-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 6px;
 }
 .section-rule {
   height: 1px;
   background: var(--line);
-  margin: 18px 0;
+  margin: 10px 0;
 }
 .hint {
   font-size: 10px;
   color: #b0b0b0;
   line-height: 1.8;
-  margin: 8px 0 16px;
+  margin: 6px 0 8px;
 }
 .selected-name {
   font-size: 10px;
@@ -754,7 +754,7 @@ small {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--blue);
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 .inspector-empty {
   text-align: center;
@@ -815,8 +815,8 @@ small {
   grid-row: 2;
 }
 .timeline-panel .panel-title {
-  height: 30px;
-  min-height: 30px;
+  height: 28px;
+  min-height: 28px;
 }
 .timeline-tools {
   display: flex;
@@ -1220,50 +1220,6 @@ small {
 .timeline-footer > span:nth-child(3) {
   justify-self: end;
 }
-.statusbar {
-  height: 30px;
-  min-height: 30px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 18px;
-  color: #969696;
-  font-size: 9px;
-  background: #1a1a1a;
-  border-top: 1px solid #3c3c3c;
-  gap: 15px;
-}
-.statusbar > span:first-child {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex: 1;
-}
-.statusbar > span:last-child {
-  font:
-    8px ui-monospace,
-    monospace;
-  letter-spacing: 1px;
-}
-.statusbar b {
-  color: var(--accent);
-  margin: 0 6px;
-}
-.precise-seek .field {
-  flex-direction: row;
-  align-items: center;
-  margin: 0;
-  font-size: 9px;
-  gap: 6px;
-}
-.precise-seek input {
-  padding: 2px 5px;
-  height: 22px;
-  width: 85px;
-  font:
-    9px ui-monospace,
-    monospace;
-}
 .toast-region {
   position: fixed;
   top: 48px;
@@ -1325,7 +1281,7 @@ small {
   border: 1px solid #656565;
   border-radius: 12px;
   box-shadow: 0 24px 100px #000000aa;
-  padding: 25px;
+  padding: 16px;
   width: 500px;
   max-width: 100%;
   max-height: calc(100dvh - 44px);
@@ -1336,7 +1292,7 @@ small {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 .dialog h2 {
   font-size: 17px;
@@ -1426,11 +1382,11 @@ small {
   display: flex;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 9px;
-  margin-top: 24px;
+  gap: 6px;
+  margin-top: 12px;
 }
 .dialog-footer .primary {
-  padding: 8px 16px;
+  padding: 6px 12px;
 }
 .export-progress {
   margin-top: 16px;
@@ -1662,8 +1618,8 @@ small {
   .workspace {
     grid-template-columns: 290px minmax(500px, 1fr) 300px;
     grid-template-rows: minmax(400px, 1fr) 320px;
-    padding: 16px;
-    gap: 14px;
+    padding: 10px;
+    gap: 8px;
   }
   .preview-stage {
     padding: 30px 40px;
@@ -1761,15 +1717,6 @@ small {
   .inspector-body {
     min-height: 220px;
   }
-  .statusbar {
-    height: auto;
-    min-height: 35px;
-    flex-wrap: wrap;
-    padding: 8px 12px;
-  }
-  .statusbar > span:last-child {
-    display: none;
-  }
   .timeline-tools button {
     padding: 2px 6px;
   }
@@ -1860,7 +1807,7 @@ small {
   min-height: 590px;
 }
 .workspace {
-  grid-template-rows: minmax(280px, 1fr) 215px;
+  grid-template-rows: minmax(260px, 1fr) 260px;
 }
 .preview-stage {
   padding-top: 8px;

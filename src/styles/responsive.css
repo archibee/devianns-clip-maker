@@ -13,7 +13,7 @@
     display: grid;
     grid-template-columns: auto minmax(60px, 120px) minmax(0, 1fr);
     gap: clamp(4px, 1vw, 10px);
-    padding: 3px max(6px, env(safe-area-inset-left));
+    padding: 2px max(6px, env(safe-area-inset-left));
   }
   .brand {
     min-width: 0;
@@ -87,14 +87,14 @@
   .workspace {
     flex: none;
     min-height: 0;
-    gap: 10px;
-    padding: 10px;
+    gap: 8px;
+    padding: 8px;
   }
   .panel-title {
     height: auto;
-    min-height: 42px;
+    min-height: 38px;
     flex-shrink: 0;
-    padding: 5px 10px;
+    padding: 2px 8px;
     gap: 6px;
   }
   .panel-actions {
@@ -259,19 +259,13 @@
     flex-wrap: wrap;
     gap: 8px;
   }
-  .statusbar {
-    height: auto;
-    min-height: 35px;
-    flex-wrap: wrap;
-    padding: 8px 10px;
-  }
 }
 
 /* Tablet: editing surface beside the library, then timeline and properties. */
 @media (min-width: 601px) and (max-width: 1150px) {
   .workspace {
     grid-template-columns: minmax(170px, 1fr) minmax(0, 3fr);
-    grid-template-rows: clamp(320px, 52dvh, 540px) 280px 360px;
+    grid-template-rows: clamp(320px, 52dvh, 540px) 310px 360px;
   }
   .asset-panel {
     grid-column: 1;
@@ -298,7 +292,7 @@
 @media (max-width: 600px) {
   .workspace {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: clamp(300px, 55dvh, 440px) 290px 380px 320px;
+    grid-template-rows: clamp(300px, 55dvh, 440px) 320px 380px 320px;
     padding: 6px;
     gap: 8px;
   }

@@ -12,6 +12,79 @@
   background: #111;
   border-radius: 6px;
 }
+.record-preview-surface {
+  position: relative;
+  min-width: 0;
+}
+.record-region-overlay {
+  position: absolute;
+  overflow: hidden;
+  touch-action: none;
+  cursor: crosshair;
+}
+.record-region-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #ffd078;
+  box-shadow: 0 0 0 10000px #0008;
+  cursor: move;
+}
+.record-region-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #171717;
+  background: #ffd078;
+}
+.record-region-handle.nw {
+  left: -5px;
+  top: -5px;
+  cursor: nwse-resize;
+}
+.record-region-handle.ne {
+  right: -5px;
+  top: -5px;
+  cursor: nesw-resize;
+}
+.record-region-handle.sw {
+  left: -5px;
+  bottom: -5px;
+  cursor: nesw-resize;
+}
+.record-region-handle.se {
+  right: -5px;
+  bottom: -5px;
+  cursor: nwse-resize;
+}
+.record-mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 8px;
+  min-width: 0;
+}
+.record-mode label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.record-dialog-body .record-mode input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  accent-color: var(--accent);
+}
+.record-region-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
 .record-audio {
   color: #8bd7bb;
 }

@@ -72,8 +72,8 @@ try {
     return '2 clips';
   });
   await check('시킹·분할·트림·재배열·실행 취소', async () => {
-    const seek = page.getByRole('spinbutton', { name: '이동 (초)', exact: true });
-    await seek.fill('1');
+    const seek = page.getByRole('slider', { name: '재생 위치', exact: true });
+    await seek.fill('1000000');
     await seek.press('Enter');
     await page.locator('h2').filter({ hasText: '타임라인' }).click();
     await page.keyboard.press('s');
@@ -116,8 +116,8 @@ try {
     await page
       .getByRole('textbox', { name: '자막 내용' })
       .fill('한글 클립 테스트\nDevianns Clip Maker');
-    const seek = page.getByRole('spinbutton', { name: '이동 (초)', exact: true });
-    await seek.fill('1.2');
+    const seek = page.getByRole('slider', { name: '재생 위치', exact: true });
+    await seek.fill('1200000');
     await seek.press('Enter');
     await page.waitForTimeout(1500);
     const pixel = await page
@@ -131,13 +131,13 @@ try {
     await page.keyboard.press('Space');
     await page.getByRole('button', { name: '일시 정지', exact: true }).waitFor();
     await page.waitForFunction(
-      () => Number(document.querySelector('.precise-seek input').value) > 0.1,
+      () => Number(document.querySelector('input[aria-label="\uC7AC\uC0DD \uC704\uCE58"]').value / 1_000_000) > 0.1,
       null,
       { timeout: 12000 },
     );
     await page.keyboard.press('Space');
     assert.ok(
-      Number(await page.getByRole('spinbutton', { name: '이동 (초)', exact: true }).inputValue()) >
+      Number(await page.getByRole('slider', { name: '재생 위치', exact: true }).inputValue()) / 1_000_000 >
         0.1,
     );
     return 'audio-clock advanced';
@@ -145,8 +145,8 @@ try {
   await page.screenshot({ path: 'test-results/editor.png', fullPage: true });
   const references = [];
   for (const time of [0.2, 1.2, 2.2]) {
-    const seek = page.getByRole('spinbutton', { name: '이동 (초)', exact: true });
-    await seek.fill(String(time));
+    const seek = page.getByRole('slider', { name: '재생 위치', exact: true });
+    await seek.fill(String(Math.round(time * 1_000_000)));
     await seek.press('Enter');
     await page.waitForTimeout(600);
     const pixels = await page.getByTestId('preview-canvas').evaluate((canvas) => {

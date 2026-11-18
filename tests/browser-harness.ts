@@ -450,3 +450,54 @@ export async function comparePreview(
     input.dispose();
   }
 }
+
+export async function inspectRecordingRegion(bytes: number[], times: number[]) {
+  const input = new Input({
+    source: new BlobSource(new Blob([new Uint8Array(bytes)])),
+    formats: ALL_FORMATS,
+  });
+  try {
+    const video = await input.getPrimaryVideoTrack();
+    if (!video) throw new Error('녹화 영상 누락');
+    const sink = new CanvasSink(video, { poolSize: 1 });
+    const samples = [];
+    for (const time of times) {
+      const sample = await sink.getCanvas(time);
+      if (!sample) continue;
+      const canvas = sample.canvas as HTMLCanvasElement,
+        ctx = canvas.getContext('2d')!;
+      const width = canvas.width,
+        height = canvas.height,
+        pixels = ctx.getImageData(0, 0, width, height).data;
+      let left = width,
+        right = -1,
+        top = height,
+        bottom = -1;
+      for (let y = 0; y < height; y++)
+        for (let x = 0; x < width; x++) {
+          const offset = (y * width + x) * 4;
+          if (pixels[offset] > 225 && pixels[offset + 1] > 225 && pixels[offset + 2] > 225) {
+            left = Math.min(left, x);
+            right = Math.max(right, x);
+            top = Math.min(top, y);
+            bottom = Math.max(bottom, y);
+          }
+        }
+      samples.push({
+        time,
+        width,
+        height,
+        whiteBox: { width: right - left + 1, height: bottom - top + 1 },
+        center: Array.from(
+          ctx.getImageData(Math.floor(width * 0.15), Math.floor(height * 0.5), 1, 1).data,
+        ),
+        top: Array.from(
+          ctx.getImageData(Math.floor(width * 0.5), Math.floor(height * 0.03), 1, 1).data,
+        ),
+      });
+    }
+    return samples;
+  } finally {
+    input.dispose();
+  }
+}

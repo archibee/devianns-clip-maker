@@ -14,6 +14,8 @@
 ## 미디어
 
 - [record_upgrade_v1.md](./record/record_upgrade_v1.md)
+- [record_upgrade_v2.md](./record/record_upgrade_v2.md)
+- [record_upgrade_v3.md](./record/record_upgrade_v3.md)
 
 - [media_upgrade_v1.md](./media/media_upgrade_v1.md)
 
@@ -60,6 +62,7 @@
 ## 반응형 UI
 
 - [mobile_ui_upgrade_v1.md](./responsive/mobile_ui_upgrade_v1.md)
+- [ui_upgrade_v2.md](./responsive/ui_upgrade_v2.md)
 
 - [mediaquery_v1.md](./responsive/mediaquery_v1.md)
 - [mediaquery_v2.md](./responsive/mediaquery_v2.md)

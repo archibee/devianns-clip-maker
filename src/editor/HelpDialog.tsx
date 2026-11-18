@@ -200,6 +200,7 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
           </table>
         </section>
         <aside className="help-notes" aria-label="편집과 저장 안내">
+          <p><strong>패널 크기</strong> 패널 사이의 경계를 드래그해 크기를 조절합니다. 경계에 포커스한 뒤 방향키로도 조절할 수 있으며 더블클릭 또는 Home으로 기본 배치로 돌아갑니다.</p>
           <p>
             <strong>프로젝트 다시 열기</strong> JSON에는 원본 영상이 포함되지 않습니다. 원본 파일을
             보관하고 필요하면 다시 연결하세요.

@@ -1,10 +1,14 @@
+import { createCaptureOutput, type CaptureOutput, type OutputFactory } from './canvas-output';
+import { FULL_REGION, type RecordRegion } from './geometry';
 export type RecordingState = {
-  status: 'idle' | 'selecting' | 'ready' | 'recording' | 'finishing' | 'done' | 'error';
+  status:
+    'idle' | 'selecting' | 'ready' | 'preparing' | 'recording' | 'finishing' | 'done' | 'error';
   stream?: MediaStream;
   hasAudio?: boolean;
   bytes: number;
   error?: string;
   reason?: string;
+  outputSize?: { width: number; height: number };
 };
 export const MAX_RECORDING_BYTES = 128 * 1024 * 1024;
 export const MAX_RECORDING_MS = 30 * 60 * 1000;
@@ -43,11 +47,19 @@ export class ScreenRecordingService {
   private timer?: ReturnType<typeof setTimeout>;
   private events?: AbortController;
   private reason?: string;
+  private output?: CaptureOutput;
+  private outputController?: AbortController;
+  private createOutput: OutputFactory;
   private notify: (state: RecordingState) => void;
   private complete: (file: File) => void;
-  constructor(notify: (state: RecordingState) => void, complete: (file: File) => void) {
+  constructor(
+    notify: (state: RecordingState) => void,
+    complete: (file: File) => void,
+    createOutput: OutputFactory = createCaptureOutput,
+  ) {
     this.notify = notify;
     this.complete = complete;
+    this.createOutput = createOutput;
   }
   async choose() {
     this.cancel();
@@ -60,6 +72,8 @@ export class ScreenRecordingService {
       const options: DisplayMediaStreamOptions & {
         selfBrowserSurface: string;
         preferCurrentTab: boolean;
+        systemAudio: 'include';
+        windowAudio: 'system';
       } = {
         video: {
           displaySurface: 'browser',
@@ -67,7 +81,9 @@ export class ScreenRecordingService {
           width: { ideal: 1920 },
           height: { ideal: 1080 },
         },
-        audio: true,
+        audio: { suppressLocalAudioPlayback: false } as MediaTrackConstraints,
+        systemAudio: 'include',
+        windowAudio: 'system',
         selfBrowserSurface: 'exclude',
         preferCurrentTab: false,
       };
@@ -110,20 +126,37 @@ export class ScreenRecordingService {
       );
     }
   }
-  start() {
+  async start(region: RecordRegion = FULL_REGION) {
     if (
       !this.stream ||
       this.recorder ||
+      this.outputController ||
       !this.stream.getVideoTracks().some((t) => t.readyState === 'live')
     )
       return;
+    const generation = this.generation;
+    this.outputController = new AbortController();
+    this.notify({ status: 'preparing', stream: this.stream, bytes: 0 });
     try {
       const hasAudio = this.stream.getAudioTracks().some((t) => t.readyState === 'live');
+      const output = await this.createOutput(
+        this.stream,
+        { ...region },
+        this.outputController.signal,
+        (message) => {
+          if (generation === this.generation) this.fail(message);
+        },
+      );
+      if (generation !== this.generation) {
+        output.dispose();
+        return;
+      }
+      this.output = output;
       const mimeType = recordingFormats(hasAudio).find((type) =>
         MediaRecorder.isTypeSupported(type),
       );
       if (!mimeType) throw new Error('지원하는 녹화 형식이 없습니다. 다른 브라우저를 사용하세요.');
-      const recorder = new MediaRecorder(this.stream, {
+      const recorder = new MediaRecorder(output.stream, {
         mimeType,
         videoBitsPerSecond: 4_000_000,
         ...(hasAudio ? { audioBitsPerSecond: 128_000 } : {}),
@@ -132,7 +165,6 @@ export class ScreenRecordingService {
       this.bytes = 0;
       this.chunks = [];
       this.reason = undefined;
-      const generation = this.generation;
       recorder.ondataavailable = (event) => {
         if (generation !== this.generation || !event.data.size) return;
         if (this.bytes + event.data.size > MAX_RECORDING_BYTES) {
@@ -143,7 +175,8 @@ export class ScreenRecordingService {
         this.bytes += event.data.size;
         this.notify({
           status: recorder.state === 'recording' ? 'recording' : 'finishing',
-          stream: this.stream,
+          stream: output.stream,
+          outputSize: { width: output.width, height: output.height },
           hasAudio,
           bytes: this.bytes,
           reason: this.reason,
@@ -177,15 +210,27 @@ export class ScreenRecordingService {
         () => this.stop('녹화 시간 한도에 도달해 자동으로 완료했습니다.'),
         MAX_RECORDING_MS,
       );
-      this.notify({ status: 'recording', stream: this.stream, hasAudio, bytes: 0 });
+      this.notify({
+        status: 'recording',
+        stream: output.stream,
+        hasAudio,
+        bytes: 0,
+        outputSize: { width: output.width, height: output.height },
+      });
     } catch (error) {
+      if (generation !== this.generation) return;
       this.fail(error instanceof Error ? error.message : '녹화를 시작하지 못했습니다.');
     }
   }
   stop(reason?: string) {
     if (!this.recorder || this.recorder.state !== 'recording') return;
     this.reason = reason;
-    this.notify({ status: 'finishing', stream: this.stream, bytes: this.bytes, reason });
+    this.notify({
+      status: 'finishing',
+      stream: this.output?.stream ?? this.stream,
+      bytes: this.bytes,
+      reason,
+    });
     try {
       this.recorder.stop();
     } catch {
@@ -197,6 +242,10 @@ export class ScreenRecordingService {
     this.timer = undefined;
     this.events?.abort();
     this.events = undefined;
+    this.outputController?.abort();
+    this.outputController = undefined;
+    this.output?.dispose();
+    this.output = undefined;
     if (this.recorder) {
       this.recorder.ondataavailable = null;
       this.recorder.onstop = null;

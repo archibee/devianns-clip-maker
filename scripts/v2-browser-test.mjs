@@ -25,8 +25,8 @@ async function check(name, run) {
   return result;
 }
 async function seek(p, n) {
-  const input = p.getByRole('spinbutton', { name: '이동 (초)', exact: true });
-  await input.fill(String(n));
+  const input = p.getByRole('slider', { name: '재생 위치', exact: true });
+  await input.fill(String(Math.round(n * 1_000_000)));
   await input.press('Enter');
 }
 async function number(p, label, n) {
@@ -55,14 +55,14 @@ async function snapshot(p) {
     for (let i = 0; i < data.length; i += 7) hash = (hash * 31 + data[i]) >>> 0;
     return {
       hash,
-      time: Number(document.querySelector('.precise-seek input').value),
+      time: Number(document.querySelector('input[aria-label="\uC7AC\uC0DD \uC704\uCE58"]').value / 1_000_000),
       color: Array.from(ctx.getImageData(700, 300, 1, 1).data),
     };
   });
 }
 async function progress(p, count = 4) {
   await p.waitForFunction(
-    () => Number(document.querySelector('.precise-seek input').value) > 0,
+    () => Number(document.querySelector('input[aria-label="\uC7AC\uC0DD \uC704\uCE58"]').value / 1_000_000) > 0,
     null,
     { timeout: 12000 },
   );

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Dialog } from '../../../src/editor/Panel';
 import { recordingUnavailable, ScreenRecordingService, type RecordingState } from './service';
 import './style.css';
+import { FULL_REGION, type RecordRegion } from './geometry';
+import { RegionSelector } from './RegionSelector';
 export function RecordDialog(p: {
   onClose: () => void;
   onImport: (file: File) => Promise<boolean>;
@@ -12,6 +14,8 @@ export function RecordDialog(p: {
     [imported, setImported] = useState(false),
     [error, setError] = useState<string>();
   const [elapsed, setElapsed] = useState(0);
+  const [mode, setMode] = useState<'full' | 'region'>('full');
+  const [region, setRegion] = useState<RecordRegion>({ x: 0.1, y: 0.1, width: 0.8, height: 0.8 });
   const [service] = useState(() => new ScreenRecordingService(setState, setFile));
   const video = useRef<HTMLVideoElement>(null),
     props = useRef(p),
@@ -84,31 +88,113 @@ export function RecordDialog(p: {
   const locked =
     importing ||
     state.status === 'recording' ||
+    state.status === 'preparing' ||
     state.status === 'finishing' ||
     state.status === 'selecting';
   return (
     <Dialog title="탭·화면 녹화" onClose={close} locked={locked}>
       <div className="record-dialog-body">
         <p>
-          다른 탭이나 창을 선택해 녹화합니다. 탭의 소리도 필요하면 브라우저 공유창에서 소리 공유를
-          켜세요.
+          탭·창·전체 화면을 선택해 녹화합니다. 소리도 필요하면 브라우저 공유창에서 탭 오디오 또는
+          시스템 오디오 공유를 켜세요.
         </p>
         {issue && (
           <p className="inline-error" role="alert">
             {issue}
           </p>
         )}
-        <video
-          ref={video}
-          autoPlay
-          playsInline
-          muted
-          aria-label="녹화할 공유 화면 미리보기"
-          className="record-preview"
-        />
+        <div className="record-preview-surface">
+          <video
+            ref={video}
+            autoPlay
+            playsInline
+            muted
+            aria-label="녹화할 공유 화면 미리보기"
+            className="record-preview"
+          />
+          {state.status === 'ready' && mode === 'region' && (
+            <RegionSelector video={video} region={region} onChange={setRegion} />
+          )}
+        </div>
+        {state.status === 'ready' && (
+          <fieldset className="record-mode">
+            <legend>녹화 범위</legend>
+            <label>
+              <input
+                type="radio"
+                name="record-mode"
+                value="full"
+                checked={mode === 'full'}
+                onChange={() => setMode('full')}
+              />
+              전체
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="record-mode"
+                value="region"
+                checked={mode === 'region'}
+                onChange={() => setMode('region')}
+              />
+              사각형 지정
+            </label>
+            {mode === 'region' && (
+              <button onClick={() => setRegion({ ...FULL_REGION })}>영역 초기화</button>
+            )}
+          </fieldset>
+        )}
+        {state.status === 'ready' && mode === 'region' && (
+          <p className="record-warning">
+            미리보기 위에서 드래그해 영역을 그리거나 사각형·모서리를 움직이세요. 선택 위치는 영상
+            요소를 자동 추적하지 않으며 탭 배치가 바뀌면 다시 선택해야 합니다.
+          </p>
+        )}
+        {state.status === 'ready' && mode === 'region' && (
+          <details>
+            <summary>영역 수치 조정</summary>
+            <div className="record-region-fields">
+              {(['x', 'y', 'width', 'height'] as const).map((key, index) => {
+                const min = key === 'x' || key === 'y' ? 0 : 2;
+                const max =
+                  (key === 'x'
+                    ? 1 - region.width
+                    : key === 'y'
+                      ? 1 - region.height
+                      : key === 'width'
+                        ? 1 - region.x
+                        : 1 - region.y) * 100;
+                const label = ['X', 'Y', '너비', '높이'][index];
+                return (
+                  <label className="field" key={key}>
+                    {label} (%)
+                    <input
+                      type="number"
+                      aria-label={`녹화 영역 ${label} (%)`}
+                      min={min}
+                      max={Math.floor(max * 100) / 100}
+                      step={1}
+                      value={Math.round(region[key] * 10000) / 100}
+                      onChange={(event) => {
+                        const value = event.target.valueAsNumber;
+                        if (Number.isFinite(value))
+                          setRegion({
+                            ...region,
+                            [key]: Math.min(max, Math.max(min, value)) / 100,
+                          });
+                      }}
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          </details>
+        )}
         {state.hasAudio !== undefined && (
           <p className={state.hasAudio ? 'record-audio' : 'record-warning'}>
-            {state.hasAudio ? '공유 소리 포함' : '공유 소리 없음 · 무음 영상으로 녹화됩니다.'}
+            {state.hasAudio
+              ? '브라우저 공유 오디오 포함'
+              : '브라우저가 오디오 트랙을 공유하지 않았습니다. 소리 공유를 켜 다시 선택하세요. 그대로 시작하면 무음 영상으로 녹화됩니다.'}
           </p>
         )}
         <p className="record-status" role="status">
@@ -116,19 +202,26 @@ export function RecordDialog(p: {
             ? '완성된 영상을 프로젝트 에셋에 추가하는 중…'
             : imported
               ? '녹화 영상이 프로젝트 에셋에 추가됐습니다.'
-              : state.status === 'recording'
-                ? `● 녹화 중 · ${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')} · ${(state.bytes / 1024 / 1024).toFixed(1)} MiB`
-                : state.status === 'finishing'
-                  ? '녹화 파일을 마무리하는 중…'
-                  : state.status === 'selecting'
-                    ? '브라우저에서 공유할 탭을 선택하세요.'
-                    : state.status === 'ready'
-                      ? '공유 화면과 소리를 확인한 뒤 녹화를 시작하세요.'
-                      : '녹화할 탭을 선택하세요.'}
+              : state.status === 'preparing'
+                ? '녹화 크기를 고정하고 영상을 준비하는 중…'
+                : state.status === 'recording'
+                  ? `● 녹화 중 · ${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')} · ${(state.bytes / 1024 / 1024).toFixed(1)} MiB`
+                  : state.status === 'finishing'
+                    ? '녹화 파일을 마무리하는 중…'
+                    : state.status === 'selecting'
+                      ? '브라우저에서 공유할 탭을 선택하세요.'
+                      : state.status === 'ready'
+                        ? '공유 화면과 소리를 확인한 뒤 녹화를 시작하세요.'
+                        : '녹화할 탭을 선택하세요.'}
         </p>
+        {state.outputSize && (
+          <small>
+            녹화 크기 {state.outputSize.width} × {state.outputSize.height} · 비율 유지
+          </small>
+        )}
         <small className="muted">
-          최대 128 MiB / 30분 · 탭 녹화 지원과 공유 소리는 브라우저에 따라 다릅니다. 원본은 외부로
-          전송하지 않습니다.
+          최대 128 MiB / 30분 · 시스템 소리가 들리더라도 브라우저·OS에서 오디오 공유를 지원해야
+          녹음됩니다. 원본은 외부로 전송하지 않습니다.
         </small>
         {state.reason && <p>{state.reason}</p>}
         {(state.error || error) && (
@@ -149,7 +242,10 @@ export function RecordDialog(p: {
         {state.status === 'ready' && (
           <>
             <button onClick={() => void service.choose()}>다시 선택</button>
-            <button className="primary" onClick={() => service.start()}>
+            <button
+              className="primary"
+              onClick={() => void service.start(mode === 'region' ? region : FULL_REGION)}
+            >
               녹화 시작
             </button>
           </>

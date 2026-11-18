@@ -42,8 +42,8 @@ async function load(project, p = page) {
   await p.waitForTimeout(180);
 }
 async function seek(n, p = page) {
-  const input = p.getByRole('spinbutton', { name: '이동 (초)', exact: true });
-  await input.fill(String(n));
+  const input = p.getByRole('slider', { name: '재생 위치', exact: true });
+  await input.fill(String(Math.round(n * 1_000_000)));
   await input.press('Enter');
   await p.waitForTimeout(180);
 }
@@ -274,7 +274,7 @@ try {
     await dragHandle('se', -30, -20);
     await page.getByRole('button', { name: '재생', exact: true }).click();
     await page.waitForFunction(
-      () => Number(document.querySelector('.precise-seek input').value) > 0.9,
+      () => Number(document.querySelector('input[aria-label="\uC7AC\uC0DD \uC704\uCE58"]').value / 1_000_000) > 0.9,
       null,
       { timeout: 12000 },
     );
@@ -348,11 +348,11 @@ try {
     await page.locator('.timeline-panel h2').click();
     await page.keyboard.press('Control+v');
     await page.waitForFunction(
-      () => Number(document.querySelector('.precise-seek input').value) > 5.9,
+      () => Number(document.querySelector('input[aria-label="\uC7AC\uC0DD \uC704\uCE58"]').value / 1_000_000) > 5.9,
     );
     await page.keyboard.press('Control+v');
     await page.waitForFunction(
-      () => Number(document.querySelector('.precise-seek input').value) > 7.9,
+      () => Number(document.querySelector('input[aria-label="\uC7AC\uC0DD \uC704\uCE58"]').value / 1_000_000) > 7.9,
     );
     assert.equal(await page.locator('.timeline-clip').count(), 4);
     await seek(1);
