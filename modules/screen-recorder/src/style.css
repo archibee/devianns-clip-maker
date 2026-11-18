@@ -1,7 +1,23 @@
+.dialog:has(> .record-dialog-body) {
+  display: flex;
+  flex-direction: column;
+  max-height: min(680px, calc(100dvh - 120px));
+  overflow: hidden;
+}
+.dialog:has(> .record-dialog-body) > header,
+.dialog:has(> .record-dialog-body) > .record-actions {
+  flex-shrink: 0;
+}
 .record-dialog-body {
   display: grid;
+  align-content: start;
+  flex: 1 1 auto;
   gap: 10px;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 .record-preview {
   display: block;

@@ -97,6 +97,9 @@ export function RecordDialog(p: {
   return (
     <Dialog title="탭·화면 녹화" onClose={close} locked={locked}>
       <div className="record-dialog-body">
+        <p className="record-warning">
+          브라우저에 따라 일부 동작이 지원되지 않을 수 있습니다. (커서 가리기 기능 등)
+        </p>
         <p>
           탭·창·전체 화면을 선택해 녹화합니다. 소리도 필요하면 브라우저 공유창에서 탭 오디오 또는
           시스템 오디오 공유를 켜세요.
