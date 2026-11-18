@@ -49,6 +49,44 @@ function setup(capture?: () => Promise<MediaStream>) {
   return { service, track, stream, states, complete };
 }
 afterEach(() => vi.unstubAllGlobals());
+it('requests cursor omission and confirms it from the actual shared track setting', async () => {
+  const test = setup();
+  const applyConstraints = vi.fn(async () => {});
+  Object.assign(test.track, { applyConstraints, getSettings: () => ({ cursor: 'never' }) });
+  await test.service.choose();
+  expect(applyConstraints).toHaveBeenCalledWith({ cursor: { exact: 'never' } });
+  expect(test.states.at(-1)?.cursorHidden).toBe(true);
+  test.service.cancel();
+});
+it('unsupported cursor hiding keeps recording available without claiming the cursor is hidden', async () => {
+  const test = setup();
+  Object.assign(test.track, {
+    applyConstraints: vi.fn(async () => { throw new DOMException('Unsupported', 'OverconstrainedError'); }),
+    getSettings: () => ({ cursor: 'always' }),
+  });
+  await test.service.choose();
+  expect(test.states.at(-1)?.cursorHidden).toBe(false);
+  expect(test.states.at(-1)?.status).toBe('ready');
+  await test.service.start();
+  expect(test.states.at(-1)?.status).toBe('recording');
+  test.service.cancel();
+});
+it('can switch the shared track between cursor shown and hidden before recording', async () => {
+  const test = setup();
+  let cursor = 'always';
+  const applyConstraints = vi.fn(async (constraints: { cursor: { exact: string } }) => {
+    cursor = constraints.cursor.exact;
+  });
+  Object.assign(test.track, { applyConstraints, getSettings: () => ({ cursor }) });
+  await test.service.choose(true);
+  expect(test.states.at(-1)?.cursorHidden).toBe(false);
+  expect(test.states.at(-1)?.cursorModeApplied).toBe(true);
+  await test.service.setCursorVisible(false);
+  expect(test.states.at(-1)?.cursorHidden).toBe(true);
+  await test.service.setCursorVisible(true);
+  expect(cursor).toBe('always');
+  test.service.cancel();
+});
 it('requests system/window audio and keeps a monitor audio track instead of filtering by surface', async () => {
   const test = setup();
   const video = Object.assign(test.track, { getSettings: () => ({ displaySurface: 'monitor' }) });
@@ -69,6 +107,9 @@ it('requests system/window audio and keeps a monitor audio track instead of filt
   const options = (capture.mock.calls as unknown as [[Record<string, unknown>]])[0][0];
   expect(options.systemAudio).toBe('include');
   expect(options.windowAudio).toBe('system');
+  expect(options.audio).toMatchObject({
+    echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+  });
   expect(test.states.at(-1)?.hasAudio).toBe(true);
   await test.service.start();
   expect(test.states.at(-1)?.hasAudio).toBe(true);

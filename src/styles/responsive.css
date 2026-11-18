@@ -359,10 +359,6 @@
   .subtitle-inspector .cue-quick-editor {
     flex-basis: 60px;
   }
-  .subtitle-inspector .subtitle-list-region {
-    flex-basis: 76px;
-    max-height: 24%;
-  }
   .asset-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

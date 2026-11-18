@@ -15,6 +15,8 @@ export function RecordDialog(p: {
     [error, setError] = useState<string>();
   const [elapsed, setElapsed] = useState(0);
   const [mode, setMode] = useState<'full' | 'region'>('full');
+  const [showCursor, setShowCursor] = useState(false);
+  const [updatingCursor, setUpdatingCursor] = useState(false);
   const [region, setRegion] = useState<RecordRegion>({ x: 0.1, y: 0.1, width: 0.8, height: 0.8 });
   const [service] = useState(() => new ScreenRecordingService(setState, setFile));
   const video = useRef<HTMLVideoElement>(null),
@@ -86,6 +88,7 @@ export function RecordDialog(p: {
     p.onClose();
   }
   const locked =
+    updatingCursor ||
     importing ||
     state.status === 'recording' ||
     state.status === 'preparing' ||
@@ -118,7 +121,7 @@ export function RecordDialog(p: {
         </div>
         {state.status === 'ready' && (
           <fieldset className="record-mode">
-            <legend>녹화 범위</legend>
+            <legend>녹화 범위 · 탭·창·전체 화면 공통</legend>
             <label>
               <input
                 type="radio"
@@ -190,6 +193,31 @@ export function RecordDialog(p: {
             </div>
           </details>
         )}
+        <label className="record-cursor-option">
+          <input
+            type="checkbox"
+            checked={showCursor}
+            disabled={locked || !!file}
+            onChange={(event) => {
+              const visible = event.target.checked;
+              setShowCursor(visible);
+              if (state.status === 'ready') {
+                setUpdatingCursor(true);
+                void service.setCursorVisible(visible).finally(() => {
+                  if (alive.current) setUpdatingCursor(false);
+                });
+              }
+            }}
+          />
+          마우스 커서 표시
+        </label>
+        {state.status === 'ready' && !updatingCursor && (
+          <p className={state.cursorModeApplied ? 'muted' : 'record-warning'}>
+            {state.cursorModeApplied
+              ? `마우스 커서 ${showCursor ? '표시' : '숨김'} 적용`
+              : '이 브라우저·공유 대상에서는 커서 설정 적용이 확인되지 않았습니다. 녹화 결과가 선택과 다를 수 있습니다.'}
+          </p>
+        )}
         {state.hasAudio !== undefined && (
           <p className={state.hasAudio ? 'record-audio' : 'record-warning'}>
             {state.hasAudio
@@ -211,7 +239,7 @@ export function RecordDialog(p: {
                     : state.status === 'selecting'
                       ? '브라우저에서 공유할 탭을 선택하세요.'
                       : state.status === 'ready'
-                        ? '공유 화면과 소리를 확인한 뒤 녹화를 시작하세요.'
+                        ? '공유 화면과 소리를 확인하세요. 탭·창도 사각형 지정으로 일부 영역만 녹화할 수 있습니다.'
                         : '녹화할 탭을 선택하세요.'}
         </p>
         {state.outputSize && (
@@ -235,15 +263,16 @@ export function RecordDialog(p: {
           {file ? '닫기' : '취소'}
         </button>
         {(state.status === 'idle' || state.status === 'error') && (
-          <button className="primary" disabled={!!issue} onClick={() => void service.choose()}>
+          <button className="primary" disabled={!!issue || locked} onClick={() => void service.choose(showCursor)}>
             녹화할 탭 선택
           </button>
         )}
         {state.status === 'ready' && (
           <>
-            <button onClick={() => void service.choose()}>다시 선택</button>
+            <button disabled={locked} onClick={() => void service.choose(showCursor)}>다시 선택</button>
             <button
               className="primary"
+              disabled={locked}
               onClick={() => void service.start(mode === 'region' ? region : FULL_REGION)}
             >
               녹화 시작

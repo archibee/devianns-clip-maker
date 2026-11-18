@@ -5,6 +5,8 @@ export type RecordingState = {
     'idle' | 'selecting' | 'ready' | 'preparing' | 'recording' | 'finishing' | 'done' | 'error';
   stream?: MediaStream;
   hasAudio?: boolean;
+  cursorHidden?: boolean;
+  cursorModeApplied?: boolean;
   bytes: number;
   error?: string;
   reason?: string;
@@ -61,7 +63,36 @@ export class ScreenRecordingService {
     this.complete = complete;
     this.createOutput = createOutput;
   }
-  async choose() {
+  private async configureCursor(stream: MediaStream, visible: boolean) {
+    const cursor = visible ? 'always' : 'never';
+    for (const track of stream.getVideoTracks()) {
+      try {
+        await track.applyConstraints({ cursor: { exact: cursor } } as MediaTrackConstraints & {
+          cursor: ConstrainDOMString;
+        });
+      } catch {
+        // Unsupported constraints must not prevent recording; verify settings below.
+      }
+    }
+    const settings = stream.getVideoTracks().map(
+      (track) => (track.getSettings?.() as (MediaTrackSettings & { cursor?: string }) | undefined)?.cursor,
+    );
+    return {
+      cursorHidden: settings.every((value) => value === 'never'),
+      cursorModeApplied: settings.every((value) => value === cursor),
+    };
+  }
+  async setCursorVisible(visible: boolean) {
+    const stream = this.stream, generation = this.generation;
+    if (!stream || this.recorder || this.outputController) return;
+    const cursorState = await this.configureCursor(stream, visible);
+    if (generation !== this.generation || this.recorder || this.outputController) return;
+    this.notify({
+      status: 'ready', stream, bytes: 0, ...cursorState,
+      hasAudio: stream.getAudioTracks().some((track) => track.readyState === 'live'),
+    });
+  }
+  async choose(showCursor = false) {
     this.cancel();
     const generation = this.generation;
     this.notify({ status: 'selecting', bytes: 0 });
@@ -80,8 +111,14 @@ export class ScreenRecordingService {
           frameRate: 30,
           width: { ideal: 1920 },
           height: { ideal: 1080 },
-        },
-        audio: { suppressLocalAudioPlayback: false } as MediaTrackConstraints,
+          cursor: showCursor ? 'always' : 'never',
+        } as MediaTrackConstraints & { cursor: string },
+        audio: {
+          suppressLocalAudioPlayback: false,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        } as MediaTrackConstraints,
         systemAudio: 'include',
         windowAudio: 'system',
         selfBrowserSurface: 'exclude',
@@ -95,6 +132,8 @@ export class ScreenRecordingService {
       this.stream = stream;
       if (!stream.getVideoTracks().some((t) => t.readyState === 'live'))
         throw new Error('공유할 영상 트랙이 없습니다.');
+      const cursorState = await this.configureCursor(stream, showCursor);
+      if (generation !== this.generation) return;
       this.events = new AbortController();
       for (const track of stream.getVideoTracks())
         track.addEventListener(
@@ -110,6 +149,7 @@ export class ScreenRecordingService {
         status: 'ready',
         stream,
         hasAudio: stream.getAudioTracks().some((t) => t.readyState === 'live'),
+        ...cursorState,
         bytes: 0,
       });
     } catch (error) {

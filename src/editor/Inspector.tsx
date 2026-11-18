@@ -13,6 +13,7 @@ import {
 } from '../project/model';
 import type { Command } from '../project/commands';
 import { PanelTitle } from './Panel';
+import { SubtitleDrawer } from './SubtitleDrawer';
 import { subtitleSizes, subtitlePositions, subtitleStyles } from './subtitle-presets';
 
 export function NumberField({
@@ -206,11 +207,19 @@ export function Inspector(p: Props) {
           자막 <small>{p.project.subtitles.length}</small>
         </button>
       </div>
+      {tab === 'subtitle' && (
+        <div className="section-heading subtitle-section-heading">
+          <h3>자막</h3>
+          <button className="subtle" disabled={p.locked} onClick={addCue}>
+            ＋ 추가
+          </button>
+        </div>
+      )}
       {tab === 'subtitle' && cue && !multi && !p.locked && (
         <div className="cue-quick-editor">
           <label>
             <span className="cue-quick-heading">
-              선택 자막 바로 편집{' '}
+              자막 텍스트{' '}
               <small>
                 {seconds(cue.startUs).toFixed(2)}–{seconds(cue.endUs).toFixed(2)}s
               </small>
@@ -380,12 +389,6 @@ export function Inspector(p: Props) {
           </>
         ) : (
           <>
-            <div className="section-heading">
-              <h3>수동 자막</h3>
-              <button className="subtle" disabled={p.locked} onClick={addCue}>
-                ＋ 추가
-              </button>
-            </div>
             {cue && (
               <div className="cue-editor" key={selectionKey}>
                 {multi && (
@@ -690,8 +693,7 @@ export function Inspector(p: Props) {
       </div>
 
       {tab === 'subtitle' && (
-        <div className="subtitle-list-region" aria-label="자막 목록">
-          <h3>자막 목록</h3>
+        <SubtitleDrawer>
           <div className="cue-list">
             {p.project.subtitles.map((c) => (
               <button
@@ -711,7 +713,7 @@ export function Inspector(p: Props) {
               </button>
             ))}
           </div>
-        </div>
+        </SubtitleDrawer>
       )}
     </section>
   );
